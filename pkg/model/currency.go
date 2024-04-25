@@ -12,3 +12,7 @@ var currencySymbols = map[string]string{
 	"BRL": "R$",
 	"SGD": "SGD$",
 }
+
+func GetCurrencySymbol(code string) string {
+	return currencySymbols[code]
+}

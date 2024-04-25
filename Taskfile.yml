@@ -1,0 +1,27 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  APP: invoiceling
+
+tasks:
+  cleanup:
+    desc: "cleanup init files"
+    cmds:
+      - rm -Rf client config invoice pdf
+
+  build:
+    desc: "build the compiled binary"
+    cmds:
+      - go build -o {{.APP}} main.go
+
+  test:
+    desc: "run all unit tests"
+    cmds:
+      - go test -v ./...
+
+  lint:
+    desc: "lint the code"
+    cmds:
+      - golangci-lint run
