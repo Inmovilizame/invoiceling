@@ -17,8 +17,10 @@ package cmd
 
 import (
 	"fmt"
-
+	"github.com/Inmovilizame/invoiceling/pkg/model"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 // createCmd represents the create command
@@ -33,17 +35,25 @@ var createCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(createCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// createCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	createCmd.Flags().StringP("client", "c", "client1", "Client to create invoice for")
 }
 
 func createCmdFunc(cmd *cobra.Command, args []string) {
-	fmt.Println("create called")
+	me := model.LoadFreelancer()
+
+	clientID, err := cmd.Flags().GetString("client")
+	cobra.CheckErr(err)
+
+	client, err := model.LoadClient(getClientSrcFile(clientID))
+	cobra.CheckErr(err)
+
+	invoice := model.NewInvoice(&me, &client, 30, model.DF_YMD)
+	err = invoice.Save(viper.GetString("dirs.invoice"))
+	cobra.CheckErr(err)
+
+	fmt.Printf("Invoice created: %s\n", invoice.ID)
+}
+
+func getClientSrcFile(clientID string) string {
+	return filepath.Join(viper.GetString("dirs.client"), clientID+".json")
 }

@@ -28,6 +28,8 @@ import (
 var (
 	allowedFormats = []string{"yaml", "yml", "json"}
 	dirs           = []string{"client", "config", "invoice", "pdf"}
+
+	defaultMask = os.FileMode(0755)
 )
 
 // initCmd represents the init command
@@ -36,7 +38,7 @@ var initCmd = &cobra.Command{
 	Short: "Initialiaze a folder with default configurations",
 	Long: `Initialiaze the current folder with default configurations. This can be
 	changed manually by editing the generated config file.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		if viper.ConfigFileUsed() != "" {
 			fmt.Println("Directory already initialized, exiting...")
 			return
@@ -49,7 +51,7 @@ var initCmd = &cobra.Command{
 
 		fmt.Println("Generating folder structure...")
 		for _, dir := range dirs {
-			err := os.Mkdir(dir, 0755)
+			err := os.Mkdir(dir, defaultMask)
 			cobra.CheckErr(err)
 		}
 
@@ -71,6 +73,7 @@ func defaultConfig() {
 		if dir == "config" { // Config dir is not configurable
 			continue
 		}
+
 		viper.SetDefault(
 			fmt.Sprintf("dirs.%s", dir),
 			fmt.Sprintf("./%s", dir),
@@ -78,15 +81,15 @@ func defaultConfig() {
 	}
 
 	viper.SetDefault("currency", "EUR")
-	viper.SetDefault("logo", ".config/logo.png")
+	viper.SetDefault("logo", "./config/logo.png")
 
-	viper.SetDefault("freelance.company", "Your Company Name")
-	viper.SetDefault("freelance.name", "Your Full Name")
-	viper.SetDefault("freelance.email", "your.email@example.com")
-	viper.SetDefault("freelance.phone", "+99 123456789")
-	viper.SetDefault("freelance.vat", "CC12345678A")
-	viper.SetDefault("freelance.address1", "Your Street Address")
-	viper.SetDefault("freelance.address2", "City, ST, Zip Code")
+	viper.SetDefault("freelancer.company", "Your Company Name")
+	viper.SetDefault("freelancer.name", "Your Full Name")
+	viper.SetDefault("freelancer.email", "your.email@example.com")
+	viper.SetDefault("freelancer.phone", "+99 123456789")
+	viper.SetDefault("freelancer.vat_id", "CC12345678A")
+	viper.SetDefault("freelancer.address1", "Your Street Address")
+	viper.SetDefault("freelancer.address2", "City, ST, Zip Code")
 
 	viper.SetDefault("payment.holder", "Bank account holder")
 	viper.SetDefault("payment.iban", "CC00 1234 1234 12 1234567890")

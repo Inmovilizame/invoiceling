@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 	Use:   "invoiceling",
 	Short: "CLI based invoicing tool for freelancers",
 	Long: `Simple CLI tool to manage invoice for freelancers.
-	Generate, store and transform to PDF.`,
+	Generate, store and transform to pdfObject.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -56,7 +56,8 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Could not load configuration")
+		cobra.CheckErr(err)
 	}
 }

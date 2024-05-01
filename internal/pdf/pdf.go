@@ -26,70 +26,206 @@ const (
 	totalLabel    = "Total"
 )
 
+var (
+	margins = map[string]float64{"left": 40, "top": 40, "right": 40, "bottom": 40}
+)
+
 type Document struct {
-	PDF *gopdf.GoPdf
+	po       *gopdf.GoPdf
+	lastYPos float64
 }
 
-func NewGoPdf(fonts map[string][]byte) Document {
+func NewGoPdf(fonts map[string][]byte) (*Document, error) {
 	pdfObject := gopdf.GoPdf{}
 	pdfObject.Start(gopdf.Config{
 		PageSize: *gopdf.PageSizeA4,
 	})
 
-	pdfObject.SetMargins(40, 40, 40, 40)
+	pdfObject.SetMargins(margins["left"], margins["top"], margins["right"], margins["bottom"])
 	pdfObject.AddPage()
 
 	for name, font := range fonts {
-		_ = pdfObject.AddTTFFontData(name, font)
+		err := pdfObject.AddTTFFontData(name, font)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return Document{&pdfObject}
+	return &Document{po: &pdfObject, lastYPos: pdfObject.GetY()}, nil
 }
 
-func (d Document) WriteLogo(logo string, from string) {
+func (d *Document) SaveTo(dest string) error {
+	err := d.po.WritePdf(dest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Document) Logo(logo string) {
+	if logo == "" {
+		return
+	}
+
+	startX := d.po.GetX()
+	startY := d.po.GetX()
+
+	width, height := getImageDimension(logo)
+	scaledWidth := 100.0
+	scaledHeight := float64(height) * scaledWidth / float64(width)
+	_ = d.po.Image(logo, startX, startY, &gopdf.Rect{W: scaledWidth, H: scaledHeight})
+	d.po.Br(scaledHeight + 24)
+
+	d.lastYPos = d.po.GetY()
+}
+
+func (d *Document) InvoiceInfo(id, date, due string) {
+	d.po.SetX(420)
+	d.po.SetY(40)
+
+	_ = d.po.SetFont("Inter-Bold", "", 24)
+	d.po.SetTextColor(0, 0, 0)
+	_ = d.po.CellWithOption(
+		&gopdf.Rect{W: 135, H: 36},
+		"INVOICE",
+		gopdf.CellOption{Align: gopdf.Center},
+	)
+	d.po.Br(36)
+
+	_ = d.po.SetFont("Inter", "", 12)
+
+	d.po.SetX(420)
+	d.po.SetTextColor(100, 100, 100)
+	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
+		"Invoice:",
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.SetX(450)
+	d.po.SetTextColor(0, 0, 0)
+	_ = d.po.CellWithOption(
+		&gopdf.Rect{W: 105, H: 20},
+		id,
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.Br(20)
+
+	d.po.SetX(420)
+	d.po.SetTextColor(100, 100, 100)
+	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
+		"Date:",
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.SetX(450)
+	d.po.SetTextColor(0, 0, 0)
+	_ = d.po.CellWithOption(
+		&gopdf.Rect{W: 105, H: 20},
+		date,
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.Br(20)
+
+	d.po.SetX(420)
+	d.po.SetTextColor(100, 100, 100)
+	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
+		"Due:",
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.SetX(450)
+	d.po.SetTextColor(0, 0, 0)
+	_ = d.po.CellWithOption(
+		&gopdf.Rect{W: 105, H: 20},
+		due,
+		gopdf.CellOption{Align: gopdf.Right},
+	)
+	d.po.Br(20)
+
+	endY := d.po.GetY()
+	if endY > d.lastYPos {
+		d.lastYPos = endY
+	}
+}
+
+func (d *Document) WriteHeader(logo, title, id, date string) {
+	startX := d.po.GetX()
+	startY := d.po.GetX()
+
 	if logo != "" {
 		width, height := getImageDimension(logo)
 		scaledWidth := 100.0
 		scaledHeight := float64(height) * scaledWidth / float64(width)
-		_ = d.PDF.Image(logo, d.PDF.GetX(), d.PDF.GetY(), &gopdf.Rect{W: scaledWidth, H: scaledHeight})
-		d.PDF.Br(scaledHeight + 24)
+		_ = d.po.Image(logo, startX, startY, &gopdf.Rect{W: scaledWidth, H: scaledHeight})
+		d.po.Br(scaledHeight + 24)
 	}
-	d.PDF.SetTextColor(55, 55, 55)
 
-	formattedFrom := strings.ReplaceAll(from, `\n`, "\n")
-	fromLines := strings.Split(formattedFrom, "\n")
+	//logoY := d.po.GetY()
 
-	for i := 0; i < len(fromLines); i++ {
-		if i == 0 {
-			_ = d.PDF.SetFont("Inter", "", 12)
-			_ = d.PDF.Cell(nil, fromLines[i])
-			d.PDF.Br(18)
-		} else {
-			_ = d.PDF.SetFont("Inter", "", 10)
-			_ = d.PDF.Cell(nil, fromLines[i])
-			d.PDF.Br(15)
-		}
+	d.po.SetX(300)
+	d.po.SetY(startY)
+
+	_ = d.po.SetFont("Inter-Bold", "", 24)
+	d.po.SetTextColor(0, 0, 0)
+	_ = d.po.Cell(nil, title)
+	d.po.Br(36)
+
+	d.po.SetX(300)
+	_ = d.po.SetFont("Inter", "", 12)
+	d.po.SetTextColor(100, 100, 100)
+	_ = d.po.Cell(nil, "#")
+	_ = d.po.Cell(nil, id)
+	d.po.SetTextColor(150, 150, 150)
+	_ = d.po.Cell(nil, "  ·  ")
+	d.po.SetTextColor(100, 100, 100)
+	_ = d.po.Cell(nil, date)
+	d.po.Br(48)
+}
+
+func (d *Document) WriteFromTo(from model.Freelancer) {
+	d.po.SetTextColor(55, 55, 55)
+	d.po.SetFont("Inter", "", 14)
+	d.po.Cell(nil, from.Name)
+	d.po.Br(18)
+
+	d.po.SetFont("Inter", "", 10)
+
+	if from.Company != "" {
+		d.po.SetX(300)
+		d.po.Cell(nil, from.Company)
+		d.po.Br(15)
 	}
-	d.PDF.Br(21)
-	d.PDF.SetStrokeColor(225, 225, 225)
-	d.PDF.Line(d.PDF.GetX(), d.PDF.GetY(), 260, d.PDF.GetY())
-	d.PDF.Br(36)
+
+	if from.Address1 != "" {
+		d.po.SetX(300)
+		d.po.Cell(nil, from.Address1)
+		d.po.Br(15)
+	}
+
+	if from.Address2 != "" {
+		d.po.SetX(300)
+		d.po.Cell(nil, from.Address2)
+		d.po.Br(15)
+	}
+
+	if from.Phone != "" {
+		d.po.SetX(300)
+		d.po.Cell(nil, from.Phone)
+		d.po.Br(15)
+	}
+
+	if from.VatID != "" {
+		d.po.SetX(300)
+		d.po.Cell(nil, from.VatID)
+		d.po.Br(15)
+	}
+
+	d.po.Br(21)
+	d.po.SetStrokeColor(225, 225, 225)
+	d.po.Line(300, d.po.GetY(), 555, d.po.GetY())
+	d.po.Br(36)
 }
 
 func WriteTitle(pdf *gopdf.GoPdf, title, id, date string) {
-	_ = pdf.SetFont("Helvetica-Bold", "", 24)
-	pdf.SetTextColor(0, 0, 0)
-	_ = pdf.Cell(nil, title)
-	pdf.Br(36)
-	_ = pdf.SetFont("Inter", "", 12)
-	pdf.SetTextColor(100, 100, 100)
-	_ = pdf.Cell(nil, "#")
-	_ = pdf.Cell(nil, id)
-	pdf.SetTextColor(150, 150, 150)
-	_ = pdf.Cell(nil, "  ·  ")
-	pdf.SetTextColor(100, 100, 100)
-	_ = pdf.Cell(nil, date)
-	pdf.Br(48)
+
 }
 
 func WriteDueDate(pdf *gopdf.GoPdf, due string) {
@@ -228,5 +364,6 @@ func getImageDimension(imagePath string) (int, int) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %v\n", imagePath, err)
 	}
+
 	return img.Width, img.Height
 }

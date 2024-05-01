@@ -23,3 +23,9 @@ go.work
 
 # Do not store pdfs
 *.pdf
+
+# Application resources
+client/*
+config/*
+invoice/*
+pdf/*

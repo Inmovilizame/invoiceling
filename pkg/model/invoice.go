@@ -1,20 +1,35 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"math/rand/v2"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+type DateFormat string
+
+const (
+	DF_Text DateFormat = "Jan 02, 2006"
+	DF_YMD  DateFormat = "2006-01-02"
+	DF_DMY  DateFormat = "02/01/2006"
+)
+
+var roMask = os.FileMode(0400)
 
 type Invoice struct {
-	Id    string `json:"id" yaml:"id"`
-	Title string `json:"title" yaml:"title"`
-
+	ID   string `json:"id" yaml:"id"`
 	Logo string `json:"logo" yaml:"logo"`
-	From string `json:"from" yaml:"from"`
-	To   string `json:"to" yaml:"to"`
+
+	From *Freelancer `json:"from" yaml:"from"`
+	To   *Client     `json:"to" yaml:"to"`
+
 	Date string `json:"date" yaml:"date"`
 	Due  string `json:"due" yaml:"due"`
 
-	Items      []string  `json:"items" yaml:"items"`
-	Quantities []int     `json:"quantities" yaml:"quantities"`
-	Rates      []float64 `json:"rates" yaml:"rates"`
+	Items []Item `json:"items" yaml:"items"`
 
 	Tax      float64 `json:"tax" yaml:"tax"`
 	Discount float64 `json:"discount" yaml:"discount"`
@@ -23,19 +38,57 @@ type Invoice struct {
 	Note string `json:"note" yaml:"note"`
 }
 
-func NewInvoice() Invoice {
-	return Invoice{
-		Id:         time.Now().Format("20060102"),
-		Title:      "INVOICE",
-		Rates:      []float64{25},
-		Quantities: []int{2},
-		Items:      []string{"Paper Cranes"},
-		From:       "Project Folded, Inc.",
-		To:         "Untitled Corporation, Inc.",
-		Date:       time.Now().Format("Jan 02, 2006"),
-		Due:        time.Now().AddDate(0, 0, 14).Format("Jan 02, 2006"),
-		Tax:        0,
-		Discount:   0,
-		Currency:   "EUR",
+func NewInvoice(me *Freelancer, to *Client, dueDays int, dateFormat DateFormat) *Invoice {
+	invoiceDate := time.Now()
+	dueDate := invoiceDate.AddDate(0, 0, dueDays)
+
+	items := NewItems(5)
+
+	return &Invoice{
+		ID:       "F24-001",
+		Logo:     "logo.png",
+		From:     me,
+		To:       to,
+		Date:     invoiceDate.Format(string(dateFormat)),
+		Due:      dueDate.Format(string(dateFormat)),
+		Items:    items,
+		Tax:      0,
+		Discount: 0,
+		Currency: "EUR",
 	}
+}
+
+type Item struct {
+	Description string  `json:"description" yaml:"description"`
+	Quantity    int     `json:"quantity" yaml:"quantity"`
+	Rate        float64 `json:"rate" yaml:"rate"`
+}
+
+func NewItems(amount int) []Item {
+	items := make([]Item, amount)
+	for i := 0; i < amount; i++ {
+		items[i] = Item{
+			Description: fmt.Sprintf("Product %d", i),
+			Quantity:    rand.IntN(10),
+			Rate:        rand.Float64() * 100.0,
+		}
+	}
+
+	return items
+}
+
+func (i *Invoice) Save(basePath string) error {
+	jsonBytes, err := json.MarshalIndent(i, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	invoicePath := filepath.Join(basePath, i.ID+".json")
+
+	err = os.WriteFile(invoicePath, jsonBytes, roMask)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

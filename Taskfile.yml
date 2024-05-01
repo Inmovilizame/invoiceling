@@ -1,5 +1,3 @@
-# https://taskfile.dev
-
 version: '3'
 
 vars:
@@ -25,3 +23,8 @@ tasks:
     desc: "lint the code"
     cmds:
       - golangci-lint run
+
+  generate-pdf:
+    desc: "generate default pdf"
+    cmds:
+      - go run ./main.go pdf
