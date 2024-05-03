@@ -17,14 +17,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/Inmovilizame/invoiceling/pkg/model"
+	"path/filepath"
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"path/filepath"
 )
 
-// createCmd represents the create command
-var createCmd = &cobra.Command{
+// invoiceCreateCmd represents the invoiceCreate command
+var invoiceCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new invoice file",
 	Long: `Create a new invoice file to be stored as JSON file.
@@ -33,25 +34,29 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(createCmd)
-
-	createCmd.Flags().StringP("client", "c", "client1", "Client to create invoice for")
+	invoiceCmd.AddCommand(invoiceCreateCmd)
+	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Client to create invoice for")
 }
 
 func createCmdFunc(cmd *cobra.Command, args []string) {
-	me := model.LoadFreelancer()
+	today := time.Now()
 
-	clientID, err := cmd.Flags().GetString("client")
-	cobra.CheckErr(err)
+	fmt.Printf("F%s-%03d", today.Format("06"), 1)
+	fmt.Println("")
 
-	client, err := model.LoadClient(getClientSrcFile(clientID))
-	cobra.CheckErr(err)
-
-	invoice := model.NewInvoice(&me, &client, 30, model.DF_YMD)
-	err = invoice.Save(viper.GetString("dirs.invoice"))
-	cobra.CheckErr(err)
-
-	fmt.Printf("Invoice created: %s\n", invoice.ID)
+	//me := model.LoadFreelancer()
+	//
+	//clientID, err := cmd.Flags().GetString("client")
+	//cobra.CheckErr(err)
+	//
+	//client, err := model.LoadClient(getClientSrcFile(clientID))
+	//cobra.CheckErr(err)
+	//
+	//invoice := model.NewInvoice(&me, &client, 30, model.DF_YMD)
+	//err = invoice.Save(viper.GetString("dirs.invoice"))
+	//cobra.CheckErr(err)
+	//
+	//fmt.Printf("Invoice created: %s\n", invoice.ID)
 }
 
 func getClientSrcFile(clientID string) string {

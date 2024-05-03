@@ -20,8 +20,9 @@ const (
 var roMask = os.FileMode(0400)
 
 type Invoice struct {
-	ID   string `json:"id" yaml:"id"`
-	Logo string `json:"logo" yaml:"logo"`
+	ID     string `json:"id" yaml:"id"`
+	Status string `json:"status" yaml:"status"`
+	Logo   string `json:"logo" yaml:"logo"`
 
 	From *Freelancer `json:"from" yaml:"from"`
 	To   *Client     `json:"to" yaml:"to"`
@@ -46,6 +47,7 @@ func NewInvoice(me *Freelancer, to *Client, dueDays int, dateFormat DateFormat) 
 
 	return &Invoice{
 		ID:       "F24-001",
+		Status:   "CREATED",
 		Logo:     "logo.png",
 		From:     me,
 		To:       to,

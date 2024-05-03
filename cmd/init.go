@@ -27,7 +27,7 @@ import (
 
 var (
 	allowedFormats = []string{"yaml", "yml", "json"}
-	dirs           = []string{"client", "config", "invoice", "pdf"}
+	dirs           = []string{"client", "invoice", "pdf", "static"}
 
 	defaultMask = os.FileMode(0755)
 )
@@ -57,7 +57,7 @@ var initCmd = &cobra.Command{
 
 		fmt.Println("Generating default configuration file...")
 		defaultConfig()
-		err := viper.WriteConfigAs(fmt.Sprintf("./config/config.%s", format))
+		err := viper.WriteConfigAs(fmt.Sprintf("./config.%s", format))
 		cobra.CheckErr(err)
 	},
 }
@@ -70,18 +70,15 @@ func init() {
 
 func defaultConfig() {
 	for _, dir := range dirs {
-		if dir == "config" { // Config dir is not configurable
-			continue
-		}
-
 		viper.SetDefault(
 			fmt.Sprintf("dirs.%s", dir),
 			fmt.Sprintf("./%s", dir),
 		)
 	}
 
-	viper.SetDefault("currency", "EUR")
-	viper.SetDefault("logo", "./config/logo.png")
+	viper.SetDefault("invoice.currency", "EUR")
+	viper.SetDefault("invoice.logo", "./static/logo.png")
+	viper.SetDefault("invoice.id_format", "F%s-%03d")
 
 	viper.SetDefault("freelancer.company", "Your Company Name")
 	viper.SetDefault("freelancer.name", "Your Full Name")

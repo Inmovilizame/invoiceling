@@ -17,10 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
-
 	"github.com/spf13/viper"
 )
 
@@ -49,7 +47,7 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		viper.AddConfigPath("./config/")
+		viper.AddConfigPath("./")
 		viper.SetConfigName("config")
 	}
 
@@ -57,7 +55,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Could not load configuration")
-		cobra.CheckErr(err)
+		fmt.Println("Could not load configuration")
 	}
 }

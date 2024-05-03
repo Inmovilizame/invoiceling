@@ -25,7 +25,8 @@ go.work
 *.pdf
 
 # Application resources
+config.yaml
 client/*
-config/*
 invoice/*
 pdf/*
+static/*
