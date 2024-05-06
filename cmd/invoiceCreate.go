@@ -17,9 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	"path/filepath"
-	"time"
 
+	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -30,35 +29,40 @@ var invoiceCreateCmd = &cobra.Command{
 	Short: "Create a new invoice file",
 	Long: `Create a new invoice file to be stored as JSON file.
 	The name of the file matches invoice number.`,
-	Run: createCmdFunc,
+	Run: createInvoiceCmdFunc,
 }
 
 func init() {
 	invoiceCmd.AddCommand(invoiceCreateCmd)
-	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Client to create invoice for")
+	invoiceCreateCmd.Flags().IntP("id", "i", 0, "Invoice ID")
+	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Invoice client")
+	invoiceCreateCmd.Flags().IntP("due", "d", 30, "Invoice due date")
 }
 
-func createCmdFunc(cmd *cobra.Command, args []string) {
-	today := time.Now()
+func createInvoiceCmdFunc(cmd *cobra.Command, _ []string) {
+	clientID, err := cmd.Flags().GetString("client")
+	cobra.CheckErr(err)
 
-	fmt.Printf("F%s-%03d", today.Format("06"), 1)
-	fmt.Println("")
+	due, err := cmd.Flags().GetInt("due")
+	cobra.CheckErr(err)
 
-	//me := model.LoadFreelancer()
-	//
-	//clientID, err := cmd.Flags().GetString("client")
-	//cobra.CheckErr(err)
-	//
-	//client, err := model.LoadClient(getClientSrcFile(clientID))
-	//cobra.CheckErr(err)
-	//
-	//invoice := model.NewInvoice(&me, &client, 30, model.DF_YMD)
-	//err = invoice.Save(viper.GetString("dirs.invoice"))
-	//cobra.CheckErr(err)
-	//
-	//fmt.Printf("Invoice created: %s\n", invoice.ID)
-}
+	invoiceID, err := cmd.Flags().GetInt("id")
+	cobra.CheckErr(err)
 
-func getClientSrcFile(clientID string) string {
-	return filepath.Join(viper.GetString("dirs.client"), clientID+".json")
+	fs := service.NewFreelancer()
+	me := fs.Get()
+
+	cs := service.NewClientFS(viper.GetString("dirs.client"))
+	client := cs.Read(clientID)
+
+	is := service.NewInvoiceFS(
+		viper.GetString("invoice.currency"),
+		viper.GetString("invoice.id_format"),
+		viper.GetString("invoice.logo"),
+		viper.GetString("dirs.invoice"),
+	)
+	invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD)
+	cobra.CheckErr(err)
+
+	fmt.Printf("Invoice created: %s\n", invoice.ID)
 }

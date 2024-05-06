@@ -17,10 +17,11 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/Inmovilizame/invoiceling/pkg/service"
+	"github.com/spf13/viper"
 
 	"github.com/Inmovilizame/invoiceling/assets"
 	"github.com/Inmovilizame/invoiceling/internal/pdf"
-	"github.com/Inmovilizame/invoiceling/pkg/model"
 	"github.com/spf13/cobra"
 )
 
@@ -35,24 +36,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		freelancer := model.Freelancer{
-			Company:  "Your Company Name",
-			Name:     "Your Full Name",
-			Email:    "your.email@example.com",
-			Phone:    "+99 123456789",
-			VatID:    "CC12345678A",
-			Address1: "Your Street Address",
-			Address2: "City, ST, Zip Code",
-		}
-
-		client := model.Client{
-			Name:     "Company Inc.",
-			VatID:    "CC12345678A",
-			Address1: "Company Street Address",
-			Address2: "City, ST, Zip Code, Country",
-		}
-
-		invoice := model.NewInvoice(&freelancer, &client, 30, model.DF_YMD)
+		invoiceID, err := cmd.Flags().GetString("invoice")
+		cobra.CheckErr(err)
 
 		interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
 		cobra.CheckErr(err)
@@ -64,6 +49,14 @@ to quickly create a Cobra application.`,
 			"Inter":      interFont,
 			"Inter-Bold": interBoldFont,
 		}
+
+		is := service.NewInvoiceFS(
+			viper.GetString("invoice.currency"),
+			viper.GetString("invoice.id_format"),
+			viper.GetString("invoice.logo"),
+			viper.GetString("dirs.invoice"),
+		)
+		invoice := is.Read(invoiceID)
 
 		doc, err := pdf.NewGoPdf(fonts)
 		cobra.CheckErr(err)
