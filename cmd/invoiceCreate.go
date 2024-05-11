@@ -34,6 +34,7 @@ var invoiceCreateCmd = &cobra.Command{
 
 func init() {
 	invoiceCmd.AddCommand(invoiceCreateCmd)
+
 	invoiceCreateCmd.Flags().IntP("id", "i", 0, "Invoice ID")
 	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Invoice client")
 	invoiceCreateCmd.Flags().IntP("due", "d", 30, "Invoice due date")

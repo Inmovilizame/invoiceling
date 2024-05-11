@@ -16,36 +16,56 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // clientCreateCmd represents the clientCreate command
 var clientCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Creates a new client entry",
+	Long: `Creates a new client entry. If id is not provided, the vat id
+will be used to compose a unique id`,
+	Run: func(cmd *cobra.Command, _ []string) {
+		id, err := cmd.Flags().GetString("id")
+		cobra.CheckErr(err)
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("clientCreate called")
+		name, err := cmd.Flags().GetString("name")
+		cobra.CheckErr(err)
+
+		vat_id, err := cmd.Flags().GetString("vat_id")
+		cobra.CheckErr(err)
+
+		address1, err := cmd.Flags().GetString("address1")
+		cobra.CheckErr(err)
+
+		address2, err := cmd.Flags().GetString("address2")
+		cobra.CheckErr(err)
+
+		cs := service.NewClientFS(viper.GetString("dirs.client"))
+
+		err = cs.Create(id, name, vat_id, address1, address2)
+		cobra.CheckErr(err)
 	},
 }
 
 func init() {
 	clientCmd.AddCommand(clientCreateCmd)
 
-	// Here you will define your flags and configuration settings.
+	clientCreateCmd.Flags().SortFlags = false
+	clientCreateCmd.Flags().StringP("name", "n", "", "Client mame [req]")
+	clientCreateCmd.Flags().StringP("vat_id", "v", "", "Client VAT ID [req]")
+	clientCreateCmd.Flags().StringP("address1", "s", "", "Client address street info [req]")
+	clientCreateCmd.Flags().StringP("address2", "c", "", "Client address region state country")
+	clientCreateCmd.Flags().StringP("id", "i", "", "Provide a custom client id")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// clientCreateCmd.PersistentFlags().String("foo", "", "A help for foo")
+	err := clientCreateCmd.MarkFlagRequired("name")
+	cobra.CheckErr(err)
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// clientCreateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	err = clientCreateCmd.MarkFlagRequired("vat_id")
+	cobra.CheckErr(err)
+
+	err = clientCreateCmd.MarkFlagRequired("address1")
+	cobra.CheckErr(err)
 }
