@@ -16,10 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/Inmovilizame/invoiceling/pkg/service"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"fmt"
 	"strings"
+
+	"github.com/Inmovilizame/invoiceling/internal/container"
+	"github.com/Inmovilizame/invoiceling/internal/repository"
+	"github.com/Inmovilizame/invoiceling/pkg/model"
+	"github.com/spf13/cobra"
 )
 
 // clientCmd represents the client command
@@ -36,8 +39,9 @@ to quickly create a Cobra application.`,
 		filter, err := cmd.Flags().GetString("filter")
 		cobra.CheckErr(err)
 
-		cs := service.NewClientFS(viper.GetString("dirs.client"))
-		for _, c := range cs.List() {
+		cs := container.NewClientService()
+
+		for _, c := range cs.List(filterClient(filter)) {
 			if strings.Contains(strings.ToLower(c.Name), strings.ToLower(filter)) {
 				cmd.Printf("Client: %s | %s \n", c.Name, c.VatID)
 			}
@@ -49,4 +53,25 @@ func init() {
 	rootCmd.AddCommand(clientCmd)
 
 	clientCmd.Flags().StringP("filter", "f", "", "Filter clients by name")
+}
+
+func filterClient(filter string) repository.Filter[*model.Client] {
+	return func(c *model.Client) bool {
+		if filter == "" {
+			return true
+		}
+
+		fmt.Println("Comparing", filter, "with", c.VatID)
+		fmt.Printf("%+v", c)
+
+		if strings.Contains(c.ID, filter) ||
+			strings.Contains(c.Name, filter) ||
+			strings.Contains(c.VatID, filter) ||
+			strings.Contains(c.Address1, filter) ||
+			strings.Contains(c.Address2, filter) {
+			return true
+		}
+
+		return false
+	}
 }

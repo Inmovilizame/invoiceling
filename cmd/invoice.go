@@ -16,9 +16,8 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/Inmovilizame/invoiceling/pkg/service"
+	"github.com/Inmovilizame/invoiceling/internal/container"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // invoiceCmd represents the invoice command
@@ -27,12 +26,7 @@ var invoiceCmd = &cobra.Command{
 	Short: "invoice commands",
 	Long:  `invoice related commands`,
 	Run: func(cmd *cobra.Command, _ []string) {
-		is := service.NewInvoiceFS(
-			viper.GetString("invoice.currency"),
-			viper.GetString("invoice.id_format"),
-			viper.GetString("invoice.logo"),
-			viper.GetString("dirs.invoice"),
-		)
+		is := container.NewInvoiceService()
 
 		for _, i := range is.List() {
 			cmd.Printf("Invoice: %s | %s \n", i.ID, i.Date)

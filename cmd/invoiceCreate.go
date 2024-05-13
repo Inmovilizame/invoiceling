@@ -18,9 +18,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/Inmovilizame/invoiceling/internal/container"
+
 	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // invoiceCreateCmd represents the invoiceCreate command
@@ -50,18 +51,13 @@ func createInvoiceCmdFunc(cmd *cobra.Command, _ []string) {
 	invoiceID, err := cmd.Flags().GetInt("id")
 	cobra.CheckErr(err)
 
-	fs := service.NewFreelancer()
+	fs := container.NewFreelancerService()
 	me := fs.Get()
 
-	cs := service.NewClientFS(viper.GetString("dirs.client"))
+	cs := container.NewClientService()
 	client := cs.Read(clientID)
 
-	is := service.NewInvoiceFS(
-		viper.GetString("invoice.currency"),
-		viper.GetString("invoice.id_format"),
-		viper.GetString("invoice.logo"),
-		viper.GetString("dirs.invoice"),
-	)
+	is := container.NewInvoiceService()
 	invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD)
 	cobra.CheckErr(err)
 

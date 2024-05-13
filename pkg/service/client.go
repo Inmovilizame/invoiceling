@@ -15,7 +15,7 @@ var (
 )
 
 type ClientRepo interface {
-	List() []*model.Client
+	List(filter repository.Filter[*model.Client]) []*model.Client
 	Create(client *model.Client) error
 	Read(clientID string) *model.Client
 	Update(clientID string, invoice *model.Client) *model.Client
@@ -26,18 +26,18 @@ type Client struct {
 	repo ClientRepo
 }
 
-func NewClientFS(basePath string) *Client {
+func NewClient(repo ClientRepo) *Client {
 	return &Client{
-		repo: repository.NewFsClient(basePath),
+		repo: repo,
 	}
 }
 
-func (cs *Client) List() []*model.Client {
-	return cs.repo.List()
+func (cs *Client) List(filter repository.Filter[*model.Client]) []*model.Client {
+	return cs.repo.List(filter)
 }
 
-func (cs *Client) Create(id, name, vat_id, address1, address2 string) error {
-	err := ValidateNumberFormat(vat_id)
+func (cs *Client) Create(id, name, vatID, address1, address2 string) error {
+	err := ValidateNumberFormat(vatID)
 	if err != nil {
 		return err
 	}
@@ -46,13 +46,13 @@ func (cs *Client) Create(id, name, vat_id, address1, address2 string) error {
 		b := strings.Builder{}
 		b.WriteString("client")
 		b.WriteString("-")
-		b.WriteString(vat_id)
+		b.WriteString(vatID)
 	}
 
 	client := &model.Client{
 		ID:       id,
 		Name:     name,
-		VatID:    vat_id,
+		VatID:    vatID,
 		Address1: address1,
 		Address2: address2,
 	}
@@ -111,6 +111,7 @@ func ValidateNumberFormat(n string) error {
 	}
 
 	n = strings.ToUpper(n)
+
 	pattern, ok := patterns[n[0:2]]
 	if !ok {
 		return ErrCountryNotFound

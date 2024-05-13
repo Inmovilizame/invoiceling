@@ -26,7 +26,7 @@ func NewFsClient(baseDir string) *FsClient {
 	}
 }
 
-func (fc *FsClient) List() []*model.Client {
+func (fc *FsClient) List(filter Filter[*model.Client]) []*model.Client {
 	clients := make([]*model.Client, 0)
 
 	files, err := os.ReadDir(fc.basePath)
@@ -53,7 +53,9 @@ func (fc *FsClient) List() []*model.Client {
 			continue
 		}
 
-		clients = append(clients, client)
+		if filter(client) {
+			clients = append(clients, client)
+		}
 	}
 
 	return clients

@@ -16,9 +16,8 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/Inmovilizame/invoiceling/pkg/service"
+	"github.com/Inmovilizame/invoiceling/internal/container"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // clientCreateCmd represents the clientCreate command
@@ -34,7 +33,7 @@ will be used to compose a unique id`,
 		name, err := cmd.Flags().GetString("name")
 		cobra.CheckErr(err)
 
-		vat_id, err := cmd.Flags().GetString("vat_id")
+		vatId, err := cmd.Flags().GetString("vatId")
 		cobra.CheckErr(err)
 
 		address1, err := cmd.Flags().GetString("address1")
@@ -43,9 +42,9 @@ will be used to compose a unique id`,
 		address2, err := cmd.Flags().GetString("address2")
 		cobra.CheckErr(err)
 
-		cs := service.NewClientFS(viper.GetString("dirs.client"))
+		cs := container.NewClientService()
 
-		err = cs.Create(id, name, vat_id, address1, address2)
+		err = cs.Create(id, name, vatId, address1, address2)
 		cobra.CheckErr(err)
 	},
 }

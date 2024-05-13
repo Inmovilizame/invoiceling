@@ -8,6 +8,8 @@ import (
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
+type Filter[T any] func(T) bool
+
 func readClientFromFile(invoicePath string) (*model.Client, error) {
 	jsonFile, err := os.Open(invoicePath)
 	if err != nil {
