@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Inmovilizame/invoiceling/internal/repository"
+
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
@@ -18,11 +20,19 @@ const (
 )
 
 type InvoiceRepo interface {
-	List() []*model.Invoice
+	List(filter repository.Filter[*model.Invoice]) []*model.Invoice
 	Create(invoice *model.Invoice) error
 	Read(invoiceID string) *model.Invoice
 	Update(invoiceID string, invoice *model.Invoice) *model.Invoice
 	Delete(invoiceID string) error
+}
+
+type CfgRepo interface {
+	GetCurrency() string
+	GetIDFormat() string
+	GetLogo() string
+	GetFreelancer() *model.Freelancer
+	GetPaymentInfo() *model.Payment
 }
 
 type Invoice struct {
@@ -31,20 +41,19 @@ type Invoice struct {
 	logo     string
 	iRepo    InvoiceRepo
 	cRepo    ClientRepo
+	cfgRepo  CfgRepo
 }
 
-func NewInvoice(currency, idFormat, logoPath string, iRepo InvoiceRepo, cRepo ClientRepo) *Invoice {
+func NewInvoice(iRepo InvoiceRepo, cRepo ClientRepo, cfgRepo CfgRepo) *Invoice {
 	return &Invoice{
-		currency: currency,
-		idFormat: idFormat,
-		logo:     logoPath,
-		iRepo:    iRepo,
-		cRepo:    cRepo,
+		iRepo:   iRepo,
+		cRepo:   cRepo,
+		cfgRepo: cfgRepo,
 	}
 }
 
-func (is *Invoice) List() []*model.Invoice {
-	return is.iRepo.List()
+func (is *Invoice) List(filter repository.Filter[*model.Invoice]) []*model.Invoice {
+	return is.iRepo.List(filter)
 }
 
 func (is *Invoice) Create(id int, me *model.Freelancer, to *model.Client, dueDays int, dateFormat DateFormat) (*model.Invoice, error) {
@@ -63,7 +72,7 @@ func (is *Invoice) Create(id int, me *model.Freelancer, to *model.Client, dueDay
 	invoice := &model.Invoice{
 		ID:       invoiceID,
 		Status:   "CREATED",
-		Logo:     is.logo,
+		Logo:     is.cfgRepo.GetLogo(),
 		From:     me,
 		To:       to,
 		Date:     now.Format(string(dateFormat)),
@@ -71,7 +80,8 @@ func (is *Invoice) Create(id int, me *model.Freelancer, to *model.Client, dueDay
 		Items:    items,
 		Tax:      0,
 		Discount: 0,
-		Currency: is.currency,
+		Currency: is.cfgRepo.GetCurrency(),
+		Payment:  is.cfgRepo.GetPaymentInfo(),
 	}
 
 	err := is.iRepo.Create(invoice)
@@ -97,7 +107,7 @@ func (is *Invoice) Delete(invoiceID string) error {
 func (is *Invoice) getFormatedID(id int) string {
 	// TODO: Make a better solution. Maybe a repo based GetLastID
 	if id == 0 {
-		invoices := is.iRepo.List()
+		invoices := is.iRepo.List(noFilter())
 		invoice := invoices[len(invoices)-1]
 
 		idParts := strings.Split(invoice.ID, "-")
@@ -105,5 +115,11 @@ func (is *Invoice) getFormatedID(id int) string {
 		id++
 	}
 
-	return fmt.Sprintf(is.idFormat, time.Now().Format("06"), id)
+	return fmt.Sprintf(is.cfgRepo.GetIDFormat(), time.Now().Format("06"), id)
+}
+
+func noFilter() repository.Filter[*model.Invoice] {
+	return func(_ *model.Invoice) bool {
+		return true
+	}
 }

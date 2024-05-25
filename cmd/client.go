@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Inmovilizame/invoiceling/internal/container"
@@ -42,9 +41,7 @@ to quickly create a Cobra application.`,
 		cs := container.NewClientService()
 
 		for _, c := range cs.List(filterClient(filter)) {
-			if strings.Contains(strings.ToLower(c.Name), strings.ToLower(filter)) {
-				cmd.Printf("Client: %s | %s \n", c.Name, c.VatID)
-			}
+			cmd.Printf("Client: %s | %s \n", c.Name, c.VatID)
 		}
 	},
 }
@@ -60,9 +57,6 @@ func filterClient(filter string) repository.Filter[*model.Client] {
 		if filter == "" {
 			return true
 		}
-
-		fmt.Println("Comparing", filter, "with", c.VatID)
-		fmt.Printf("%+v", c)
 
 		if strings.Contains(c.ID, filter) ||
 			strings.Contains(c.Name, filter) ||

@@ -18,11 +18,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Inmovilizame/invoiceling/pkg/service"
-	"github.com/spf13/viper"
+	"github.com/Inmovilizame/invoiceling/internal/container"
 
-	"github.com/Inmovilizame/invoiceling/assets"
-	"github.com/Inmovilizame/invoiceling/internal/pdf"
 	"github.com/spf13/cobra"
 )
 
@@ -36,34 +33,18 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, _ []string) {
 		invoiceID, err := cmd.Flags().GetString("invoice")
 		cobra.CheckErr(err)
 
-		interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
+		doc, err := container.NewPdf()
 		cobra.CheckErr(err)
 
-		interBoldFont, err := assets.FS.ReadFile("fonts/Inter-Bold.ttf")
-		cobra.CheckErr(err)
-
-		fonts := map[string][]byte{
-			"Inter":      interFont,
-			"Inter-Bold": interBoldFont,
-		}
-
-		is := service.NewInvoiceFS(
-			viper.GetString("invoice.currency"),
-			viper.GetString("invoice.id_format"),
-			viper.GetString("invoice.logo"),
-			viper.GetString("dirs.invoice"),
-		)
+		is := container.NewInvoiceService()
 		invoice := is.Read(invoiceID)
 
-		doc, err := pdf.NewGoPdf(fonts)
+		err = doc.Render(invoice)
 		cobra.CheckErr(err)
-
-		doc.Logo(invoice.Logo)
-		doc.InvoiceInfo(invoice.ID, invoice.Date, invoice.Due)
 
 		//pdf.WriteTitle(doc.pdfObject, invoice.Title, invoice.ID, invoice.Date)
 		//pdf.WriteBillTo(doc.pdfObject, invoice.To)
@@ -101,8 +82,6 @@ to quickly create a Cobra application.`,
 		cobra.CheckErr(err)
 
 		fmt.Printf("Generated %s\n", output)
-
-		return nil
 	},
 }
 

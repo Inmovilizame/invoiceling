@@ -26,7 +26,7 @@ func NewFsInvoice(baseDir string) *FsInvoice {
 	}
 }
 
-func (fi *FsInvoice) List() []*model.Invoice {
+func (fi *FsInvoice) List(filter Filter[*model.Invoice]) []*model.Invoice {
 	invoices := make([]*model.Invoice, 0)
 
 	files, err := os.ReadDir(fi.basePath)
@@ -53,7 +53,9 @@ func (fi *FsInvoice) List() []*model.Invoice {
 			continue
 		}
 
-		invoices = append(invoices, invoice)
+		if filter(invoice) {
+			invoices = append(invoices, invoice)
+		}
 	}
 
 	return invoices
@@ -113,7 +115,7 @@ func (fi *FsInvoice) Delete(invoiceID string) error {
 
 	err := os.WriteFile(invoicePath, []byte{}, 0o600)
 	if err != nil {
-		fmt.Printf("Error while updating invoice %s. %v", invoiceID, err)
+		fmt.Printf("Error while deleting invoice %s. %v", invoiceID, err)
 		return err
 	}
 

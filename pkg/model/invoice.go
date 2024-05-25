@@ -13,9 +13,12 @@ type Invoice struct {
 
 	Items []Item `json:"items" yaml:"items"`
 
-	Tax      float64 `json:"tax" yaml:"tax"`
-	Discount float64 `json:"discount" yaml:"discount"`
-	Currency string  `json:"currency" yaml:"currency"`
+	Tax       float64 `json:"tax" yaml:"tax"`
+	Retention float64 `json:"retention" yaml:"retention"`
+	Discount  float64 `json:"discount" yaml:"discount"`
+	Currency  string  `json:"currency" yaml:"currency"`
+
+	Payment *Payment `json:"payment" yaml:"payment"`
 
 	Note string `json:"note" yaml:"note"`
 }
@@ -24,4 +27,10 @@ type Item struct {
 	Description string  `json:"description" yaml:"description"`
 	Quantity    int     `json:"quantity" yaml:"quantity"`
 	Rate        float64 `json:"rate" yaml:"rate"`
+}
+
+type Payment struct {
+	Holder string `json:"holder" yaml:"holder"`
+	Iban   string `json:"iban" yaml:"iban"`
+	Swift  string `json:"swift" yaml:"swift"`
 }

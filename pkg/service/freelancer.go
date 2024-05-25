@@ -6,19 +6,19 @@ import (
 )
 
 type FreelancerRepo interface {
-	Get() *model.Freelancer
+	GetFreelancer() *model.Freelancer
 }
 
 type Freelancer struct {
 	repo FreelancerRepo
 }
 
-func NewFreelancer(repo repository.CfgFreelancer) *Freelancer {
+func NewFreelancer(repo repository.CfgRepo) *Freelancer {
 	return &Freelancer{
 		repo: repo,
 	}
 }
 
-func (fs *Freelancer) Get() *model.Freelancer {
-	return fs.repo.Get()
+func (fs *Freelancer) GetFreelancer() *model.Freelancer {
+	return fs.repo.GetFreelancer()
 }

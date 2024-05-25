@@ -30,7 +30,28 @@ var invoiceCreateCmd = &cobra.Command{
 	Short: "Create a new invoice file",
 	Long: `Create a new invoice file to be stored as JSON file.
 	The name of the file matches invoice number.`,
-	Run: createInvoiceCmdFunc,
+	Run: func(cmd *cobra.Command, _ []string) {
+		clientID, err := cmd.Flags().GetString("client")
+		cobra.CheckErr(err)
+
+		due, err := cmd.Flags().GetInt("due")
+		cobra.CheckErr(err)
+
+		invoiceID, err := cmd.Flags().GetInt("id")
+		cobra.CheckErr(err)
+
+		fs := container.NewFreelancerService()
+		me := fs.GetFreelancer()
+
+		cs := container.NewClientService()
+		client := cs.Read(clientID)
+
+		is := container.NewInvoiceService()
+		invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD)
+		cobra.CheckErr(err)
+
+		fmt.Printf("Invoice created: %s\n", invoice.ID)
+	},
 }
 
 func init() {
@@ -39,27 +60,4 @@ func init() {
 	invoiceCreateCmd.Flags().IntP("id", "i", 0, "Invoice ID")
 	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Invoice client")
 	invoiceCreateCmd.Flags().IntP("due", "d", 30, "Invoice due date")
-}
-
-func createInvoiceCmdFunc(cmd *cobra.Command, _ []string) {
-	clientID, err := cmd.Flags().GetString("client")
-	cobra.CheckErr(err)
-
-	due, err := cmd.Flags().GetInt("due")
-	cobra.CheckErr(err)
-
-	invoiceID, err := cmd.Flags().GetInt("id")
-	cobra.CheckErr(err)
-
-	fs := container.NewFreelancerService()
-	me := fs.Get()
-
-	cs := container.NewClientService()
-	client := cs.Read(clientID)
-
-	is := container.NewInvoiceService()
-	invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD)
-	cobra.CheckErr(err)
-
-	fmt.Printf("Invoice created: %s\n", invoice.ID)
 }

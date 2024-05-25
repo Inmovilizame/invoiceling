@@ -33,7 +33,7 @@ will be used to compose a unique id`,
 		name, err := cmd.Flags().GetString("name")
 		cobra.CheckErr(err)
 
-		vatId, err := cmd.Flags().GetString("vatId")
+		vatID, err := cmd.Flags().GetString("vatId")
 		cobra.CheckErr(err)
 
 		address1, err := cmd.Flags().GetString("address1")
@@ -44,7 +44,7 @@ will be used to compose a unique id`,
 
 		cs := container.NewClientService()
 
-		err = cs.Create(id, name, vatId, address1, address2)
+		err = cs.Create(id, name, vatID, address1, address2)
 		cobra.CheckErr(err)
 	},
 }

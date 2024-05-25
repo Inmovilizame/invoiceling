@@ -3,36 +3,37 @@ package pdf
 import (
 	_ "embed"
 	"fmt"
+	"github.com/Inmovilizame/invoiceling/pkg/model"
 	"image"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/Inmovilizame/invoiceling/pkg/model"
-
 	"github.com/signintech/gopdf"
 )
 
 const (
-	quantityColumnOffset = 360
-	rateColumnOffset     = 405
-	amountColumnOffset   = 480
+	Margin     = 40
+	LineHeigth = 20
 )
 
 const (
-	subtotalLabel = "Subtotal"
-	discountLabel = "Discount"
-	taxLabel      = "Tax"
-	totalLabel    = "Total"
+	HeaderLogoSize   = 100
+	HeaderInfoStartX = 400
+	HeaderInfoWidth  = 155
 )
 
-var (
-	margins = map[string]float64{"left": 40, "top": 40, "right": 40, "bottom": 40}
+const (
+	itemDescWidth   = 300
+	itemQtyWidth    = 60
+	itemRateWidth   = 75
+	itemAmountWidth = 80
 )
 
 type Document struct {
 	po       *gopdf.GoPdf
 	lastYPos float64
+	debug    bool
 }
 
 func NewGoPdf(fonts map[string][]byte) (*Document, error) {
@@ -41,7 +42,7 @@ func NewGoPdf(fonts map[string][]byte) (*Document, error) {
 		PageSize: *gopdf.PageSizeA4,
 	})
 
-	pdfObject.SetMargins(margins["left"], margins["top"], margins["right"], margins["bottom"])
+	pdfObject.SetMargins(Margin, Margin, Margin, Margin)
 	pdfObject.AddPage()
 
 	for name, font := range fonts {
@@ -51,7 +52,11 @@ func NewGoPdf(fonts map[string][]byte) (*Document, error) {
 		}
 	}
 
-	return &Document{po: &pdfObject, lastYPos: pdfObject.GetY()}, nil
+	return &Document{
+		po:       &pdfObject,
+		lastYPos: pdfObject.GetY(),
+		//debug:    true,
+	}, nil
 }
 
 func (d *Document) SaveTo(dest string) error {
@@ -63,218 +68,480 @@ func (d *Document) SaveTo(dest string) error {
 	return nil
 }
 
-func (d *Document) Logo(logo string) {
-	if logo == "" {
-		return
+func (d *Document) Render(invoice *model.Invoice) error {
+	err := d.header(invoice.Logo, invoice.ID, invoice.Due, invoice.Due)
+	if err != nil {
+		return err
 	}
 
-	startX := d.po.GetX()
-	startY := d.po.GetX()
+	d.po.SetY(d.lastYPos)
+	d.po.SetStrokeColor(0, 0, 200)
+	d.po.Line(Margin, d.po.GetY(), gopdf.PageSizeA4.W-Margin, d.po.GetY())
+	d.po.Br(20)
 
-	width, height := getImageDimension(logo)
-	scaledWidth := 100.0
-	scaledHeight := float64(height) * scaledWidth / float64(width)
-	_ = d.po.Image(logo, startX, startY, &gopdf.Rect{W: scaledWidth, H: scaledHeight})
-	d.po.Br(scaledHeight + 24)
+	err = d.sendingInfo(invoice.From, invoice.To)
+	if err != nil {
+		return err
+	}
 
-	d.lastYPos = d.po.GetY()
+	d.po.SetY(d.lastYPos)
+	d.po.SetStrokeColor(0, 0, 200)
+	d.po.Line(Margin, d.po.GetY(), gopdf.PageSizeA4.W-Margin, d.po.GetY())
+	d.po.Br(20)
+
+	err = d.items(invoice.Items, invoice.Currency, invoice.Tax)
+	if err != nil {
+		return err
+	}
+
+	d.po.SetY(d.lastYPos)
+	d.po.Br(20)
+
+	err = d.paymentInfo(invoice.Payment.Holder, invoice.Payment.Iban, invoice.Payment.Swift)
+	if err != nil {
+		return err
+	}
+
+	d.po.SetY(d.lastYPos)
+	d.po.Br(20)
+
+	err = d.notes(invoice.Note)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (d *Document) InvoiceInfo(id, date, due string) {
-	d.po.SetX(420)
-	d.po.SetY(40)
+func (d *Document) header(logo, id, date, due string) error {
+	if logo != "" {
+		startX := d.po.GetX()
+		startY := d.po.GetX()
+		width, height := getImageScaledDimension(logo)
 
-	_ = d.po.SetFont("Inter-Bold", "", 24)
-	d.po.SetTextColor(0, 0, 0)
-	_ = d.po.CellWithOption(
-		&gopdf.Rect{W: 135, H: 36},
-		"INVOICE",
-		gopdf.CellOption{Align: gopdf.Center},
+		err := d.po.Image(logo, startX, startY, &gopdf.Rect{W: width, H: height})
+		if err != nil {
+			return err
+		}
+
+		d.po.Br(height + 20)
+
+		if d.po.GetY() > d.lastYPos {
+			d.lastYPos = d.po.GetY()
+		}
+	}
+
+	d.po.SetY(Margin)
+
+	err := d.headingTitle()
+	if err != nil {
+		return err
+	}
+
+	err = d.headingInfoLine("Invoice", id)
+	if err != nil {
+		return err
+	}
+
+	err = d.headingInfoLine("Date", date)
+	if err != nil {
+		return err
+	}
+
+	err = d.headingInfoLine("Due", due)
+	if err != nil {
+		return err
+	}
+
+	if d.po.GetY() > d.lastYPos {
+		d.lastYPos = d.po.GetY()
+	}
+
+	return nil
+}
+
+func (d *Document) sendingInfo(from *model.Freelancer, client *model.Client) error {
+	startY := d.po.GetY()
+
+	err := d.from(from)
+	if err != nil {
+		return nil
+	}
+
+	d.po.SetY(startY)
+
+	err = d.to(client)
+	if err != nil {
+		return nil
+	}
+
+	return nil
+}
+
+func (d *Document) items(items []model.Item, currency string, tax float64) error {
+	currSymbol := model.GetCurrencySymbol(currency)
+
+	d.setSubtleNormalText()
+
+	err := d.itemTableRow("Description", "Quantity", "Rate", "Amount")
+	if err != nil {
+		return err
+	}
+
+	d.setNormalText()
+
+	subtotal := 0.
+
+	for _, item := range items {
+		itemAmount := float64(item.Quantity) * item.Rate
+		subtotal += itemAmount
+
+		err := d.itemTableRow(
+			item.Description,
+			strconv.Itoa(item.Quantity),
+			strconv.FormatFloat(item.Rate, 'f', 2, 64)+currSymbol,
+			strconv.FormatFloat(itemAmount, 'f', 2, 64)+currSymbol,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	taxes := subtotal * tax / 100.
+	total := subtotal + taxes
+
+	d.po.Br(10)
+	d.po.Line(Margin+itemDescWidth, d.po.GetY(), 595-Margin, d.po.GetY())
+	d.po.Br(10)
+
+	err = d.itemTableRow(
+		"",
+		"Subtotal",
+		"",
+		strconv.FormatFloat(subtotal, 'f', 2, 64)+currSymbol)
+	if err != nil {
+		return err
+	}
+
+	err = d.itemTableRow(
+		"",
+		"VAT",
+		strconv.FormatFloat(tax, 'f', 0, 64)+"%",
+		strconv.FormatFloat(taxes, 'f', 2, 64)+currSymbol)
+	if err != nil {
+		return err
+	}
+
+	d.setSubtleTotalText()
+
+	err = d.itemTableRow(
+		"",
+		"Total",
+		"",
+		strconv.FormatFloat(total, 'f', 2, 64)+currSymbol)
+	if err != nil {
+		return err
+	}
+
+	if d.po.GetY() > d.lastYPos {
+		d.lastYPos = d.po.GetY()
+	}
+
+	return nil
+}
+
+func (d *Document) paymentInfo(holder, iban, swift string) error {
+	d.po.SetX(Margin + itemDescWidth)
+	d.setSubtleNormalText()
+
+	err := d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Payment Info", d.getCellOptions(gopdf.Left))
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(20)
+
+	d.po.SetStrokeColor(192, 192, 192)
+	d.po.SetFillColor(192, 192, 192)
+
+	err = d.po.Rectangle(
+		Margin+itemDescWidth-5,
+		d.po.GetY(),
+		Margin+itemDescWidth+itemQtyWidth+itemRateWidth+itemAmountWidth,
+		d.po.GetY()+60,
+		"DF",
+		0.,
+		0,
 	)
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(5)
+	d.po.SetX(Margin + itemDescWidth)
+	d.setNormalText()
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Holder: "+holder, d.getCellOptions(gopdf.Left))
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(18)
+	d.po.SetX(Margin + itemDescWidth)
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "IBAN: "+iban, d.getCellOptions(gopdf.Left))
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(18)
+	d.po.SetX(Margin + itemDescWidth)
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Swift: "+swift, d.getCellOptions(gopdf.Left))
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(20)
+
+	if d.po.GetY() > d.lastYPos {
+		d.lastYPos = d.po.GetY()
+	}
+
+	return nil
+}
+
+func (d *Document) notes(txt string) error {
+	d.setNormalText()
+
+	lines := strings.Split(txt, "\n")
+
+	d.po.SetY(float64(842 - Margin - len(lines)*20))
+
+	for _, line := range lines {
+		err := d.po.MultiCell(
+			&gopdf.Rect{W: 595 - 2*Margin, H: 20},
+			line,
+		)
+		if err != nil {
+			return err
+		}
+
+		d.po.Br(5)
+	}
+
+	return nil
+}
+
+func (d *Document) itemTableRow(desc, qty, rate, total string) error {
+	err := d.po.CellWithOption(&gopdf.Rect{W: itemDescWidth}, desc, d.getCellOptions(gopdf.Left))
+	if err != nil {
+		return err
+	}
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, qty, d.getCellOptions(gopdf.Right))
+	if err != nil {
+		return err
+	}
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemRateWidth}, rate, d.getCellOptions(gopdf.Right))
+	if err != nil {
+		return err
+	}
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: itemAmountWidth}, total, d.getCellOptions(gopdf.Right))
+	if err != nil {
+		return err
+	}
+
+	d.po.Br(20)
+
+	return nil
+}
+
+func (d *Document) headingTitle() error {
+	d.po.SetX(HeaderInfoStartX) // have 115 width points
+
+	err := d.setTitleText()
+	if err != nil {
+		return err
+	}
+
+	err = d.po.CellWithOption(
+		&gopdf.Rect{W: HeaderInfoWidth},
+		"INVOICE",
+		d.getCellOptions(gopdf.Center),
+	)
+	if err != nil {
+		return err
+	}
+
 	d.po.Br(36)
 
-	_ = d.po.SetFont("Inter", "", 12)
+	return nil
+}
 
-	d.po.SetX(420)
-	d.po.SetTextColor(100, 100, 100)
-	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
-		"Invoice:",
-		gopdf.CellOption{Align: gopdf.Right},
+func (d *Document) headingInfoLine(key, value string) error {
+	d.po.SetX(HeaderInfoStartX)
+	d.setSubtleNormalText()
+
+	err := d.po.CellWithOption(&gopdf.Rect{W: 45},
+		key,
+		d.getCellOptions(gopdf.Left),
 	)
-	d.po.SetX(450)
-	d.po.SetTextColor(0, 0, 0)
-	_ = d.po.CellWithOption(
-		&gopdf.Rect{W: 105, H: 20},
-		id,
-		gopdf.CellOption{Align: gopdf.Right},
+	if err != nil {
+		return err
+	}
+
+	err = d.po.CellWithOption(&gopdf.Rect{W: 10},
+		":",
+		d.getCellOptions(gopdf.Left),
 	)
+	if err != nil {
+		return err
+	}
+
+	d.setNormalText()
+
+	err = d.po.CellWithOption(
+		&gopdf.Rect{W: 100},
+		value,
+		d.getCellOptions(gopdf.Right),
+	)
+	if err != nil {
+		return err
+	}
+
 	d.po.Br(20)
 
-	d.po.SetX(420)
-	d.po.SetTextColor(100, 100, 100)
-	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
-		"Date:",
-		gopdf.CellOption{Align: gopdf.Right},
-	)
-	d.po.SetX(450)
-	d.po.SetTextColor(0, 0, 0)
-	_ = d.po.CellWithOption(
-		&gopdf.Rect{W: 105, H: 20},
-		date,
-		gopdf.CellOption{Align: gopdf.Right},
-	)
+	return nil
+}
+
+func (d *Document) from(from *model.Freelancer) error {
+	d.setSubtleNormalText()
+	_ = d.po.Cell(&gopdf.Rect{W: 250}, "From")
 	d.po.Br(20)
 
-	d.po.SetX(420)
-	d.po.SetTextColor(100, 100, 100)
-	_ = d.po.CellWithOption(&gopdf.Rect{W: 30, H: 20},
-		"Due:",
-		gopdf.CellOption{Align: gopdf.Right},
-	)
-	d.po.SetX(450)
-	d.po.SetTextColor(0, 0, 0)
-	_ = d.po.CellWithOption(
-		&gopdf.Rect{W: 105, H: 20},
-		due,
-		gopdf.CellOption{Align: gopdf.Right},
-	)
+	d.setNormalText()
+	_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Name)
+	d.po.Br(18)
+
+	if from.Company != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Company)
+		d.po.Br(18)
+	}
+
+	if from.Address1 != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Address1)
+		d.po.Br(18)
+	}
+
+	if from.Address2 != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Address2)
+		d.po.Br(18)
+	}
+
+	if from.Phone != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Phone)
+		d.po.Br(18)
+	}
+
+	if from.VatID != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.VatID)
+		d.po.Br(18)
+	}
+
 	d.po.Br(20)
 
 	endY := d.po.GetY()
 	if endY > d.lastYPos {
 		d.lastYPos = endY
 	}
+
+	return nil
 }
 
-func (d *Document) WriteHeader(logo, title, id, date string) {
-	startX := d.po.GetX()
-	startY := d.po.GetX()
+func (d *Document) to(client *model.Client) error {
+	d.po.SetX(HeaderInfoStartX)
 
-	if logo != "" {
-		width, height := getImageDimension(logo)
-		scaledWidth := 100.0
-		scaledHeight := float64(height) * scaledWidth / float64(width)
-		_ = d.po.Image(logo, startX, startY, &gopdf.Rect{W: scaledWidth, H: scaledHeight})
-		d.po.Br(scaledHeight + 24)
-	}
+	d.setSubtleNormalText()
+	_ = d.po.Cell(&gopdf.Rect{W: 155}, "To")
+	d.po.Br(20)
 
-	//logoY := d.po.GetY()
-
-	d.po.SetX(300)
-	d.po.SetY(startY)
-
-	_ = d.po.SetFont("Inter-Bold", "", 24)
-	d.po.SetTextColor(0, 0, 0)
-	_ = d.po.Cell(nil, title)
-	d.po.Br(36)
-
-	d.po.SetX(300)
-	_ = d.po.SetFont("Inter", "", 12)
-	d.po.SetTextColor(100, 100, 100)
-	_ = d.po.Cell(nil, "#")
-	_ = d.po.Cell(nil, id)
-	d.po.SetTextColor(150, 150, 150)
-	_ = d.po.Cell(nil, "  ·  ")
-	d.po.SetTextColor(100, 100, 100)
-	_ = d.po.Cell(nil, date)
-	d.po.Br(48)
-}
-
-func (d *Document) WriteFromTo(from model.Freelancer) {
-	d.po.SetTextColor(55, 55, 55)
-	d.po.SetFont("Inter", "", 14)
-	d.po.Cell(nil, from.Name)
+	d.po.SetX(HeaderInfoStartX)
+	d.setNormalText()
+	_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Name)
 	d.po.Br(18)
 
-	d.po.SetFont("Inter", "", 10)
+	d.po.SetX(HeaderInfoStartX)
+	_ = d.po.Cell(&gopdf.Rect{W: 250}, client.VatID)
+	d.po.Br(18)
 
-	if from.Company != "" {
-		d.po.SetX(300)
-		d.po.Cell(nil, from.Company)
-		d.po.Br(15)
+	if client.Address1 != "" {
+		d.po.SetX(HeaderInfoStartX)
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Address1)
+		d.po.Br(18)
 	}
 
-	if from.Address1 != "" {
-		d.po.SetX(300)
-		d.po.Cell(nil, from.Address1)
-		d.po.Br(15)
+	if client.Address2 != "" {
+		d.po.SetX(HeaderInfoStartX)
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Address2)
+		d.po.Br(18)
 	}
 
-	if from.Address2 != "" {
-		d.po.SetX(300)
-		d.po.Cell(nil, from.Address2)
-		d.po.Br(15)
+	endY := d.po.GetY()
+	if endY > d.lastYPos {
+		d.lastYPos = endY
 	}
 
-	if from.Phone != "" {
-		d.po.SetX(300)
-		d.po.Cell(nil, from.Phone)
-		d.po.Br(15)
-	}
-
-	if from.VatID != "" {
-		d.po.SetX(300)
-		d.po.Cell(nil, from.VatID)
-		d.po.Br(15)
-	}
-
-	d.po.Br(21)
-	d.po.SetStrokeColor(225, 225, 225)
-	d.po.Line(300, d.po.GetY(), 555, d.po.GetY())
-	d.po.Br(36)
+	return nil
 }
 
-func WriteTitle(pdf *gopdf.GoPdf, title, id, date string) {
-
-}
-
-func WriteDueDate(pdf *gopdf.GoPdf, due string) {
-	_ = pdf.SetFont("Inter", "", 9)
-	pdf.SetTextColor(75, 75, 75)
-	pdf.SetX(rateColumnOffset)
-	_ = pdf.Cell(nil, "Due Date")
-	pdf.SetTextColor(0, 0, 0)
-	_ = pdf.SetFontSize(11)
-	pdf.SetX(amountColumnOffset - 15)
-	_ = pdf.Cell(nil, due)
-	pdf.Br(12)
-}
-
-func WriteBillTo(pdf *gopdf.GoPdf, to string) {
-	pdf.SetTextColor(75, 75, 75)
-	_ = pdf.SetFont("Inter", "", 9)
-	_ = pdf.Cell(nil, "BILL TO")
-	pdf.Br(18)
-	pdf.SetTextColor(75, 75, 75)
-
-	formattedTo := strings.ReplaceAll(to, `\n`, "\n")
-	toLines := strings.Split(formattedTo, "\n")
-
-	for i := 0; i < len(toLines); i++ {
-		if i == 0 {
-			_ = pdf.SetFont("Inter", "", 15)
-			_ = pdf.Cell(nil, toLines[i])
-			pdf.Br(20)
-		} else {
-			_ = pdf.SetFont("Inter", "", 10)
-			_ = pdf.Cell(nil, toLines[i])
-			pdf.Br(15)
-		}
+func (d *Document) getCellOptions(align int) gopdf.CellOption {
+	co := gopdf.CellOption{Align: align}
+	if d.debug {
+		co.Border = gopdf.AllBorders
 	}
-	pdf.Br(64)
+
+	return co
 }
 
-func WriteHeaderRow(pdf *gopdf.GoPdf) {
-	_ = pdf.SetFont("Inter", "", 9)
-	pdf.SetTextColor(55, 55, 55)
-	_ = pdf.Cell(nil, "ITEM")
-	pdf.SetX(quantityColumnOffset)
-	_ = pdf.Cell(nil, "QTY")
-	pdf.SetX(rateColumnOffset)
-	_ = pdf.Cell(nil, "RATE")
-	pdf.SetX(amountColumnOffset)
-	_ = pdf.Cell(nil, "AMOUNT")
-	pdf.Br(24)
+func (d *Document) setNormalText() {
+	d.po.SetTextColor(24, 24, 24)
+
+	err := d.po.SetFont("Inter", "", 10)
+	if err != nil {
+		fmt.Println("Error Loading font: 'Inter'")
+	}
+}
+
+func (d *Document) setSubtleNormalText() {
+	d.po.SetTextColor(128, 128, 192)
+
+	err := d.po.SetFont("Inter", "", 12)
+	if err != nil {
+		fmt.Println("Error Loading font: 'Inter'")
+	}
+
+}
+
+func (d *Document) setSubtleTotalText() {
+	d.po.SetTextColor(128, 128, 192)
+
+	err := d.po.SetFont("Inter-Bold", "", 14)
+	if err != nil {
+		fmt.Println("Error Loading font: 'Inter-Bold'")
+	}
+}
+
+func (d *Document) setTitleText() error {
+	d.po.SetTextColor(24, 24, 24)
+
+	err := d.po.SetFont("Inter-Bold", "", 24)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func WriteNotes(pdf *gopdf.GoPdf, notes string) {
@@ -297,63 +564,8 @@ func WriteNotes(pdf *gopdf.GoPdf, notes string) {
 
 	pdf.Br(48)
 }
-func WriteFooter(pdf *gopdf.GoPdf, id string) {
-	pdf.SetY(800)
 
-	_ = pdf.SetFont("Inter", "", 10)
-	pdf.SetTextColor(55, 55, 55)
-	_ = pdf.Cell(nil, id)
-	pdf.SetStrokeColor(225, 225, 225)
-	pdf.Line(pdf.GetX()+10, pdf.GetY()+6, 550, pdf.GetY()+6)
-	pdf.Br(48)
-}
-
-func WriteRow(pdf *gopdf.GoPdf, item string, quantity int, rate float64, currency string) {
-	_ = pdf.SetFont("Inter", "", 11)
-	pdf.SetTextColor(0, 0, 0)
-
-	total := float64(quantity) * rate
-	amount := strconv.FormatFloat(total, 'f', 2, 64)
-
-	_ = pdf.Cell(nil, item)
-	pdf.SetX(quantityColumnOffset)
-	_ = pdf.Cell(nil, strconv.Itoa(quantity))
-	pdf.SetX(rateColumnOffset)
-	_ = pdf.Cell(nil, model.GetCurrencySymbol(currency)+strconv.FormatFloat(rate, 'f', 2, 64))
-	pdf.SetX(amountColumnOffset)
-	_ = pdf.Cell(nil, model.GetCurrencySymbol(currency)+amount)
-	pdf.Br(24)
-}
-
-func WriteTotals(pdf *gopdf.GoPdf, subtotal float64, tax float64, discount float64, currency string) {
-	pdf.SetY(600)
-
-	writeTotal(pdf, subtotalLabel, subtotal, currency)
-	if tax > 0 {
-		writeTotal(pdf, taxLabel, tax, currency)
-	}
-	if discount > 0 {
-		writeTotal(pdf, discountLabel, discount, currency)
-	}
-	writeTotal(pdf, totalLabel, subtotal+tax-discount, currency)
-}
-
-func writeTotal(pdf *gopdf.GoPdf, label string, total float64, currency string) {
-	_ = pdf.SetFont("Inter", "", 9)
-	pdf.SetTextColor(75, 75, 75)
-	pdf.SetX(rateColumnOffset)
-	_ = pdf.Cell(nil, label)
-	pdf.SetTextColor(0, 0, 0)
-	_ = pdf.SetFontSize(12)
-	pdf.SetX(amountColumnOffset - 15)
-	if label == totalLabel {
-		_ = pdf.SetFont("Helvetica-Bold", "", 11.5)
-	}
-	_ = pdf.Cell(nil, model.GetCurrencySymbol(currency)+strconv.FormatFloat(total, 'f', 2, 64))
-	pdf.Br(24)
-}
-
-func getImageDimension(imagePath string) (int, int) {
+func getImageScaledDimension(imagePath string) (scaledWidth, scaledHeight float64) {
 	file, err := os.Open(imagePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -365,5 +577,8 @@ func getImageDimension(imagePath string) (int, int) {
 		fmt.Fprintf(os.Stderr, "%s: %v\n", imagePath, err)
 	}
 
-	return img.Width, img.Height
+	scaledHeight = HeaderLogoSize
+	scaledWidth = float64(img.Width) * scaledHeight / float64(img.Height)
+
+	return
 }
