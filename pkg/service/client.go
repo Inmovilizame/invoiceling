@@ -30,7 +30,7 @@ type Client struct {
 	repo ClientRepo
 }
 
-func NewClient(repo ClientRepo) *Client {
+func NewClientService(repo ClientRepo) *Client {
 	return &Client{
 		repo: repo,
 	}

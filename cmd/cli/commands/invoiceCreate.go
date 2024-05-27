@@ -18,6 +18,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/spf13/viper"
+
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 
 	"github.com/Inmovilizame/invoiceling/internal/container"
@@ -42,30 +44,37 @@ var invoiceCreateCmd = &cobra.Command{
 		invoiceID, err := cmd.Flags().GetInt("id")
 		cobra.CheckErr(err)
 
+		vat, err := cmd.Flags().GetFloat64("vat")
+		cobra.CheckErr(err)
+
+		retention, err := cmd.Flags().GetFloat64("retention")
+		cobra.CheckErr(err)
+
 		note, err := cmd.Flags().GetString("note")
 		cobra.CheckErr(err)
 
-		fs := container.NewFreelancerService()
-		me := fs.GetFreelancer()
-
-		cs := container.NewClientService()
-		client := cs.Read(clientID)
-
 		is := container.NewInvoiceService()
-		invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD, note)
+		invoice, err := is.Create(invoiceID, clientID, due, service.DF_YMD, note, vat, retention)
 		cobra.CheckErr(err)
 
-		fmt.Printf("Invoice created: %s\n", invoice.ID)
+		fmt.Printf("InvoiceService created: %s\n", invoice.ID)
 	},
 }
 
 func init() {
 	invoiceCmd.AddCommand(invoiceCreateCmd)
 
-	invoiceCreateCmd.Flags().IntP("id", "i", 0, "Invoice ID")
-	invoiceCreateCmd.Flags().StringP("client", "c", "default", "Invoice client")
-	invoiceCreateCmd.Flags().IntP("due", "d", model.DefaultDueSpan, "Invoice due date")
-	invoiceCreateCmd.Flags().StringP("note", "n", "", "Add custom note to the invoice")
+	defaultDue := model.DefaultDueSpan
+	defaultNote := "Thank you for your business. Please add the invoice number to your payment description."
+	defaultRet := viper.GetFloat64("retention")
+	defaultVat := viper.GetFloat64("vat")
+
+	invoiceCreateCmd.Flags().IntP("id", "i", 0, "InvoiceService ID")
+	invoiceCreateCmd.Flags().StringP("client", "c", "", "InvoiceService client")
+	invoiceCreateCmd.Flags().IntP("due", "d", defaultDue, "InvoiceService due date")
+	invoiceCreateCmd.Flags().Float64P("vat", "v", defaultVat, "InvoiceService VAT")
+	invoiceCreateCmd.Flags().Float64P("retention", "r", defaultRet, "InvoiceService Retention (Spanish IRPF)")
+	invoiceCreateCmd.Flags().StringP("note", "n", defaultNote, "Add invoice note")
 
 	err := invoiceCreateCmd.MarkFlagRequired("client")
 	cobra.CheckErr(err)

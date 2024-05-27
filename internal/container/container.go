@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewInvoiceService() *service.Invoice {
+func NewInvoiceService() *service.InvoiceService {
 	invoiceRepo := repository.NewFsInvoice(
 		viper.GetString("dirs.invoice"),
 	)
@@ -16,7 +16,7 @@ func NewInvoiceService() *service.Invoice {
 		viper.GetString("dirs.client"),
 	)
 
-	return service.NewInvoice(
+	return service.NewInvoiceService(
 		invoiceRepo,
 		clientRepo,
 		repository.CfgRepo{},
@@ -28,14 +28,8 @@ func NewClientService() *service.Client {
 		viper.GetString("dirs.client"),
 	)
 
-	return service.NewClient(clientRepo)
+	return service.NewClientService(clientRepo)
 
-}
-
-func NewFreelancerService() *service.Freelancer {
-	return service.NewFreelancer(
-		repository.CfgRepo{},
-	)
 }
 
 func NewDocumentService() (*service.Document, error) {

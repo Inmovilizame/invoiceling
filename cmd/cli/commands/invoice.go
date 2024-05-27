@@ -52,7 +52,7 @@ func filterInvoice(filter string) repository.Filter[*model.Invoice] {
 			strings.Contains(i.To.VatID, filter) ||
 			strings.Contains(i.To.Address1, filter) ||
 			strings.Contains(i.To.Address2, filter) ||
-			strings.Contains(strings.Join(i.Note, ":"), filter) {
+			strings.Contains(strings.Join(i.Notes.ToSlice(), ":"), filter) {
 			return true
 		}
 

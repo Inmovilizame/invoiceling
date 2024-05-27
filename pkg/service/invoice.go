@@ -28,58 +28,71 @@ type InvoiceRepo interface {
 }
 
 type CfgRepo interface {
+	GetNotes() map[string]string
 	GetPdfOutputDir() string
 	GetCurrency() string
 	GetIDFormat() string
 	GetLogo() string
-	GetFreelancer() *model.Freelancer
-	GetPaymentInfo() *model.Payment
+	GetFreelancer() model.Freelancer
+	GetPaymentInfo() model.Payment
 }
 
-type Invoice struct {
+type InvoiceService struct {
 	iRepo   InvoiceRepo
 	cRepo   ClientRepo
 	cfgRepo CfgRepo
 }
 
-func NewInvoice(iRepo InvoiceRepo, cRepo ClientRepo, cfgRepo CfgRepo) *Invoice {
-	return &Invoice{
+func NewInvoiceService(iRepo InvoiceRepo, cRepo ClientRepo, cfgRepo CfgRepo) *InvoiceService {
+	return &InvoiceService{
 		iRepo:   iRepo,
 		cRepo:   cRepo,
 		cfgRepo: cfgRepo,
 	}
 }
 
-func (is *Invoice) List(filter repository.Filter[*model.Invoice]) []*model.Invoice {
+func (is *InvoiceService) List(filter repository.Filter[*model.Invoice]) []*model.Invoice {
 	return is.iRepo.List(filter)
 }
 
-func (is *Invoice) Create(id int, me *model.Freelancer, to *model.Client, dueDays int, dateFormat DateFormat, note string) (*model.Invoice, error) {
+func (is *InvoiceService) Create(
+	id int,
+	clientID string,
+	dueDays int,
+	dateFormat DateFormat,
+	note string,
+	vat,
+	retention float64,
+) (*model.Invoice, error) {
 	now := time.Now()
 	due := now.AddDate(0, 0, dueDays)
-	invoiceID := is.getFormatedID(id)
 
 	invoice := &model.Invoice{
-		ID:        invoiceID,
-		Status:    "CREATED",
-		Logo:      is.cfgRepo.GetLogo(),
-		From:      me,
-		To:        to,
-		Date:      now.Format(string(dateFormat)),
-		Due:       due.Format(string(dateFormat)),
-		Items:     []model.Item{},
-		Tax:       0,
-		Discount:  0,
-		Retention: 0,
-		Currency:  is.cfgRepo.GetCurrency(),
-		Payment:   is.cfgRepo.GetPaymentInfo(),
-		Note: []string{
-			"Thank you for your business. Please add the invoice number to your payment description.",
-		},
+		ID:       is.getFormatedID(id),
+		Status:   "CREATED",
+		Logo:     is.cfgRepo.GetLogo(),
+		From:     is.cfgRepo.GetFreelancer(),
+		To:       *is.cRepo.Read(clientID),
+		Date:     now.Format(string(dateFormat)),
+		Due:      due.Format(string(dateFormat)),
+		Items:    []model.Item{},
+		Tax:      model.TaxInfo{},
+		Discount: 0,
+		Currency: is.cfgRepo.GetCurrency(),
+		Payment:  is.cfgRepo.GetPaymentInfo(),
+		Notes:    model.Notes{Default: note},
 	}
 
-	if note != "" {
-		invoice.Note = append(invoice.Note, note)
+	notes := is.cfgRepo.GetNotes()
+
+	invoice.Tax.Vat = vat
+	if vat == 0 {
+		invoice.Notes.Vat0 = notes["vat_0"]
+	}
+
+	invoice.Tax.Retention = retention
+	if retention != 0 {
+		invoice.Notes.RetentionNot0 = notes["retention_not_0"]
 	}
 
 	err := is.iRepo.Create(invoice)
@@ -90,19 +103,19 @@ func (is *Invoice) Create(id int, me *model.Freelancer, to *model.Client, dueDay
 	return invoice, nil
 }
 
-func (is *Invoice) Read(id string) *model.Invoice {
+func (is *InvoiceService) Read(id string) *model.Invoice {
 	return is.iRepo.Read(id)
 }
 
-func (is *Invoice) Update(invoiceID string, invoice *model.Invoice) *model.Invoice {
+func (is *InvoiceService) Update(invoiceID string, invoice *model.Invoice) *model.Invoice {
 	return is.iRepo.Update(invoiceID, invoice)
 }
 
-func (is *Invoice) Delete(invoiceID string) error {
+func (is *InvoiceService) Delete(invoiceID string) error {
 	return is.iRepo.Delete(invoiceID)
 }
 
-func (is *Invoice) getFormatedID(id int) string {
+func (is *InvoiceService) getFormatedID(id int) string {
 	// TODO: Make a better solution. Maybe a repo based GetLastID
 	if id == 0 {
 		id = 1

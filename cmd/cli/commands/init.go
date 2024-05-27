@@ -16,6 +16,7 @@ limitations under the License.
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -52,6 +53,11 @@ var initCmd = &cobra.Command{
 		fmt.Println("Generating folder structure...")
 		for _, dir := range dirs {
 			err := os.Mkdir(dir, defaultMask)
+			if errors.Is(err, os.ErrExist) {
+				fmt.Println("Directory", dir, "already exists, skipping...")
+				continue
+			}
+
 			cobra.CheckErr(err)
 		}
 
@@ -93,4 +99,10 @@ func defaultConfig() {
 	viper.SetDefault("payment.holder", "Bank account holder")
 	viper.SetDefault("payment.iban", "CC00 1234 1234 12 1234567890")
 	viper.SetDefault("payment.swift", "ABCDDEFFXXX")
+
+	viper.SetDefault("notes.vat_0", "Invoice exempt from VAT pursuant to EU Directive 2006/112/EC and art. 25 of Spanish VAT Law 37 /1992.")
+	viper.SetDefault(
+		"notes.retention_not_0",
+		"Profesionales de nuevo inicio (en el año de inicio y en los dos siguientes) (art. 101.5.a LIRPF y 95.1 RIRPF).",
+	)
 }

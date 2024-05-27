@@ -72,7 +72,7 @@ func (fi *FsInvoice) Create(invoice *model.Invoice) error {
 		return errors.New("invoice already exists")
 	}
 
-	err = os.WriteFile(invoicePath, jsonBytes, 0o600)
+	err = os.WriteFile(invoicePath, jsonBytes, rw_mask)
 	if err != nil {
 		return err
 	}

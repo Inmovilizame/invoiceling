@@ -7,6 +7,13 @@ import (
 
 type CfgRepo struct{}
 
+func (c CfgRepo) GetNotes() map[string]string {
+	return map[string]string{
+		"vat_0":           viper.GetString("notes.vat_0"),
+		"retention_not_0": viper.GetString("notes.retention_not_0"),
+	}
+}
+
 func (c CfgRepo) GetPdfOutputDir() string {
 	return viper.GetString("dirs.pdf")
 }
@@ -23,8 +30,8 @@ func (c CfgRepo) GetLogo() string {
 	return viper.GetString("invoice.logo")
 }
 
-func (c CfgRepo) GetFreelancer() *model.Freelancer {
-	return &model.Freelancer{
+func (c CfgRepo) GetFreelancer() model.Freelancer {
+	return model.Freelancer{
 		Company:  viper.GetString("freelancer.company"),
 		Name:     viper.GetString("freelancer.name"),
 		Email:    viper.GetString("freelancer.email"),
@@ -35,8 +42,8 @@ func (c CfgRepo) GetFreelancer() *model.Freelancer {
 	}
 }
 
-func (c CfgRepo) GetPaymentInfo() *model.Payment {
-	return &model.Payment{
+func (c CfgRepo) GetPaymentInfo() model.Payment {
+	return model.Payment{
 		Holder: viper.GetString("payment.holder"),
 		Iban:   viper.GetString("payment.iban"),
 		Swift:  viper.GetString("payment.swift"),
