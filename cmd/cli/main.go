@@ -16,9 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"github.com/Inmovilizame/invoiceling/cmd"
+	"github.com/Inmovilizame/invoiceling/cmd/cli/commands"
 )
 
 func main() {
-	cmd.Execute()
+	commands.Execute()
 }

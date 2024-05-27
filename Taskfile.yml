@@ -12,7 +12,7 @@ tasks:
   build:
     desc: "build the compiled binary"
     cmds:
-      - go build -o {{.APP}} main.go
+      - go build -o {{.APP}} ./cmd/cli/main.go
 
   test:
     desc: "run all unit tests"

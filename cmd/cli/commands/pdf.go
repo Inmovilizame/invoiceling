@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package commands
 
 import (
 	"fmt"
@@ -37,7 +37,7 @@ to quickly create a Cobra application.`,
 		invoiceID, err := cmd.Flags().GetString("invoice")
 		cobra.CheckErr(err)
 
-		doc, err := container.NewPdf()
+		doc, err := container.NewDocumentService()
 		cobra.CheckErr(err)
 
 		is := container.NewInvoiceService()
@@ -46,42 +46,10 @@ to quickly create a Cobra application.`,
 		err = doc.Render(invoice)
 		cobra.CheckErr(err)
 
-		//pdf.WriteTitle(doc.pdfObject, invoice.Title, invoice.ID, invoice.Date)
-		//pdf.WriteBillTo(doc.pdfObject, invoice.To)
-		//pdf.WriteHeaderRow(doc.pdfObject)
-		//
-		//subtotal := 0.0
-		//for i := range invoice.Items {
-		//	q := 1
-		//	if len(invoice.Quantities) > i {
-		//		q = invoice.Quantities[i]
-		//	}
-		//
-		//	r := 0.0
-		//	if len(invoice.Rates) > i {
-		//		r = invoice.Rates[i]
-		//	}
-		//
-		//	pdf.WriteRow(doc.pdfObject, invoice.Items[i], q, r, invoice.Currency)
-		//	subtotal += float64(q) * r
-		//}
-		//
-		//if invoice.Note != "" {
-		//	pdf.WriteNotes(doc.pdfObject, invoice.Note)
-		//}
-		//
-		//pdf.WriteTotals(doc.pdfObject, subtotal, subtotal*invoice.Tax, subtotal*invoice.Discount, invoice.Currency)
-		//
-		//if invoice.Due != "" {
-		//	pdf.WriteDueDate(doc.pdfObject, invoice.Due)
-		//}
-		//pdf.WriteFooter(doc.pdfObject, invoice.ID)
-
-		output := "output/" + invoice.ID + ".pdf"
-		err = doc.SaveTo(output)
+		err = doc.SaveTo(invoiceID + ".pdf")
 		cobra.CheckErr(err)
 
-		fmt.Printf("Generated %s\n", output)
+		fmt.Println("Generated PDF for:", invoiceID)
 	},
 }
 

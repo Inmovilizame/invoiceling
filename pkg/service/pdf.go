@@ -1,20 +1,21 @@
-package pdf
+package service
 
 import (
-	_ "embed"
 	"fmt"
-	"github.com/Inmovilizame/invoiceling/pkg/model"
 	"image"
 	"os"
+	"path/filepath"
 	"strconv"
-	"strings"
+
+	"github.com/Inmovilizame/invoiceling/pkg/model"
 
 	"github.com/signintech/gopdf"
 )
 
 const (
-	Margin     = 40
+	DocWidth   = 595
 	LineHeigth = 20
+	Margin     = 40
 )
 
 const (
@@ -24,19 +25,24 @@ const (
 )
 
 const (
-	itemDescWidth   = 300
-	itemQtyWidth    = 60
-	itemRateWidth   = 75
-	itemAmountWidth = 80
+	ToStart = 320
+)
+
+const (
+	ItemDescWidth   = 300
+	ItemQtyWidth    = 60
+	ItemRateWidth   = 75
+	ItemAmountWidth = 80
 )
 
 type Document struct {
-	po       *gopdf.GoPdf
-	lastYPos float64
-	debug    bool
+	po        *gopdf.GoPdf
+	lastYPos  float64
+	debug     bool
+	outputDir string
 }
 
-func NewGoPdf(fonts map[string][]byte) (*Document, error) {
+func NewInvoiceRender(fonts map[string][]byte, outputDir string, debug bool) (*Document, error) {
 	pdfObject := gopdf.GoPdf{}
 	pdfObject.Start(gopdf.Config{
 		PageSize: *gopdf.PageSizeA4,
@@ -53,14 +59,17 @@ func NewGoPdf(fonts map[string][]byte) (*Document, error) {
 	}
 
 	return &Document{
-		po:       &pdfObject,
-		lastYPos: pdfObject.GetY(),
-		//debug:    true,
+		po:        &pdfObject,
+		lastYPos:  pdfObject.GetY(),
+		outputDir: outputDir,
+		debug:     debug,
 	}, nil
 }
 
-func (d *Document) SaveTo(dest string) error {
+func (d *Document) SaveTo(filename string) error {
+	dest := filepath.Join(d.outputDir, filename)
 	err := d.po.WritePdf(dest)
+
 	if err != nil {
 		return err
 	}
@@ -68,16 +77,24 @@ func (d *Document) SaveTo(dest string) error {
 	return nil
 }
 
+func schemaBlueColor() (red, green, blue uint8) {
+	return 0, 0, 200 //nolint:gomnd // static value for color schema
+}
+
+func schemaGrayColor() (red, green, blue uint8) {
+	return 192, 192, 192 //nolint:gomnd // static value for color schema
+}
+
 func (d *Document) Render(invoice *model.Invoice) error {
-	err := d.header(invoice.Logo, invoice.ID, invoice.Due, invoice.Due)
+	err := d.header(invoice.Logo, invoice.ID, invoice.Date, invoice.Due)
 	if err != nil {
 		return err
 	}
 
 	d.po.SetY(d.lastYPos)
-	d.po.SetStrokeColor(0, 0, 200)
+	d.po.SetStrokeColor(schemaBlueColor())
 	d.po.Line(Margin, d.po.GetY(), gopdf.PageSizeA4.W-Margin, d.po.GetY())
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	err = d.sendingInfo(invoice.From, invoice.To)
 	if err != nil {
@@ -85,17 +102,17 @@ func (d *Document) Render(invoice *model.Invoice) error {
 	}
 
 	d.po.SetY(d.lastYPos)
-	d.po.SetStrokeColor(0, 0, 200)
+	d.po.SetStrokeColor(schemaBlueColor())
 	d.po.Line(Margin, d.po.GetY(), gopdf.PageSizeA4.W-Margin, d.po.GetY())
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
-	err = d.items(invoice.Items, invoice.Currency, invoice.Tax)
+	err = d.items(invoice.Items, invoice.Currency, invoice.Tax, invoice.Retention)
 	if err != nil {
 		return err
 	}
 
 	d.po.SetY(d.lastYPos)
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	err = d.paymentInfo(invoice.Payment.Holder, invoice.Payment.Iban, invoice.Payment.Swift)
 	if err != nil {
@@ -103,7 +120,7 @@ func (d *Document) Render(invoice *model.Invoice) error {
 	}
 
 	d.po.SetY(d.lastYPos)
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	err = d.notes(invoice.Note)
 	if err != nil {
@@ -116,7 +133,7 @@ func (d *Document) Render(invoice *model.Invoice) error {
 func (d *Document) header(logo, id, date, due string) error {
 	if logo != "" {
 		startX := d.po.GetX()
-		startY := d.po.GetX()
+		startY := d.po.GetY()
 		width, height := getImageScaledDimension(logo)
 
 		err := d.po.Image(logo, startX, startY, &gopdf.Rect{W: width, H: height})
@@ -124,7 +141,7 @@ func (d *Document) header(logo, id, date, due string) error {
 			return err
 		}
 
-		d.po.Br(height + 20)
+		d.po.Br(height + LineHeigth)
 
 		if d.po.GetY() > d.lastYPos {
 			d.lastYPos = d.po.GetY()
@@ -178,7 +195,7 @@ func (d *Document) sendingInfo(from *model.Freelancer, client *model.Client) err
 	return nil
 }
 
-func (d *Document) items(items []model.Item, currency string, tax float64) error {
+func (d *Document) items(items []model.Item, currency string, tax, retention float64) error {
 	currSymbol := model.GetCurrencySymbol(currency)
 
 	d.setSubtleNormalText()
@@ -207,11 +224,12 @@ func (d *Document) items(items []model.Item, currency string, tax float64) error
 		}
 	}
 	taxes := subtotal * tax / 100.
-	total := subtotal + taxes
+	retentions := subtotal * retention / 100.
+	total := subtotal + taxes - retentions
 
-	d.po.Br(10)
-	d.po.Line(Margin+itemDescWidth, d.po.GetY(), 595-Margin, d.po.GetY())
-	d.po.Br(10)
+	d.po.Br(LineHeigth / 2)
+	d.po.Line(Margin+ItemDescWidth, d.po.GetY(), DocWidth-Margin, d.po.GetY())
+	d.po.Br(LineHeigth / 2)
 
 	err = d.itemTableRow(
 		"",
@@ -229,6 +247,17 @@ func (d *Document) items(items []model.Item, currency string, tax float64) error
 		strconv.FormatFloat(taxes, 'f', 2, 64)+currSymbol)
 	if err != nil {
 		return err
+	}
+
+	if retention != 0. {
+		err = d.itemTableRow(
+			"",
+			"IRPF",
+			"-"+strconv.FormatFloat(retention, 'f', 0, 64)+"%",
+			strconv.FormatFloat(retentions, 'f', 2, 64)+currSymbol)
+		if err != nil {
+			return err
+		}
 	}
 
 	d.setSubtleTotalText()
@@ -250,23 +279,23 @@ func (d *Document) items(items []model.Item, currency string, tax float64) error
 }
 
 func (d *Document) paymentInfo(holder, iban, swift string) error {
-	d.po.SetX(Margin + itemDescWidth)
+	d.po.SetX(Margin + ItemDescWidth)
 	d.setSubtleNormalText()
 
-	err := d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Payment Info", d.getCellOptions(gopdf.Left))
+	err := d.po.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Payment Info", d.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
-	d.po.SetStrokeColor(192, 192, 192)
-	d.po.SetFillColor(192, 192, 192)
+	d.po.SetStrokeColor(schemaGrayColor())
+	d.po.SetFillColor(schemaGrayColor())
 
 	err = d.po.Rectangle(
-		Margin+itemDescWidth-5,
+		Margin+ItemDescWidth-5,
 		d.po.GetY(),
-		Margin+itemDescWidth+itemQtyWidth+itemRateWidth+itemAmountWidth,
+		Margin+ItemDescWidth+ItemQtyWidth+ItemRateWidth+ItemAmountWidth,
 		d.po.GetY()+60,
 		"DF",
 		0.,
@@ -277,31 +306,31 @@ func (d *Document) paymentInfo(holder, iban, swift string) error {
 	}
 
 	d.po.Br(5)
-	d.po.SetX(Margin + itemDescWidth)
+	d.po.SetX(Margin + ItemDescWidth)
 	d.setNormalText()
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Holder: "+holder, d.getCellOptions(gopdf.Left))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Holder: "+holder, d.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
 	d.po.Br(18)
-	d.po.SetX(Margin + itemDescWidth)
+	d.po.SetX(Margin + ItemDescWidth)
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "IBAN: "+iban, d.getCellOptions(gopdf.Left))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "IBAN: "+iban, d.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
 	d.po.Br(18)
-	d.po.SetX(Margin + itemDescWidth)
+	d.po.SetX(Margin + ItemDescWidth)
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, "Swift: "+swift, d.getCellOptions(gopdf.Left))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Swift: "+swift, d.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	if d.po.GetY() > d.lastYPos {
 		d.lastYPos = d.po.GetY()
@@ -310,16 +339,14 @@ func (d *Document) paymentInfo(holder, iban, swift string) error {
 	return nil
 }
 
-func (d *Document) notes(txt string) error {
+func (d *Document) notes(notes []string) error {
 	d.setNormalText()
 
-	lines := strings.Split(txt, "\n")
+	d.po.SetY(float64(842 - Margin - len(notes)*20))
 
-	d.po.SetY(float64(842 - Margin - len(lines)*20))
-
-	for _, line := range lines {
+	for _, line := range notes {
 		err := d.po.MultiCell(
-			&gopdf.Rect{W: 595 - 2*Margin, H: 20},
+			&gopdf.Rect{W: DocWidth - 2*Margin, H: LineHeigth},
 			line,
 		)
 		if err != nil {
@@ -333,27 +360,27 @@ func (d *Document) notes(txt string) error {
 }
 
 func (d *Document) itemTableRow(desc, qty, rate, total string) error {
-	err := d.po.CellWithOption(&gopdf.Rect{W: itemDescWidth}, desc, d.getCellOptions(gopdf.Left))
+	err := d.po.CellWithOption(&gopdf.Rect{W: ItemDescWidth}, desc, d.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemQtyWidth}, qty, d.getCellOptions(gopdf.Right))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, qty, d.getCellOptions(gopdf.Right))
 	if err != nil {
 		return err
 	}
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemRateWidth}, rate, d.getCellOptions(gopdf.Right))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemRateWidth}, rate, d.getCellOptions(gopdf.Right))
 	if err != nil {
 		return err
 	}
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: itemAmountWidth}, total, d.getCellOptions(gopdf.Right))
+	err = d.po.CellWithOption(&gopdf.Rect{W: ItemAmountWidth}, total, d.getCellOptions(gopdf.Right))
 	if err != nil {
 		return err
 	}
 
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	return nil
 }
@@ -411,7 +438,7 @@ func (d *Document) headingInfoLine(key, value string) error {
 		return err
 	}
 
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	return nil
 }
@@ -419,7 +446,7 @@ func (d *Document) headingInfoLine(key, value string) error {
 func (d *Document) from(from *model.Freelancer) error {
 	d.setSubtleNormalText()
 	_ = d.po.Cell(&gopdf.Rect{W: 250}, "From")
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	d.setNormalText()
 	_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Name)
@@ -427,6 +454,11 @@ func (d *Document) from(from *model.Freelancer) error {
 
 	if from.Company != "" {
 		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.Company)
+		d.po.Br(18)
+	}
+
+	if from.VatID != "" {
+		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.VatID)
 		d.po.Br(18)
 	}
 
@@ -445,12 +477,7 @@ func (d *Document) from(from *model.Freelancer) error {
 		d.po.Br(18)
 	}
 
-	if from.VatID != "" {
-		_ = d.po.Cell(&gopdf.Rect{W: 250}, from.VatID)
-		d.po.Br(18)
-	}
-
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
 	endY := d.po.GetY()
 	if endY > d.lastYPos {
@@ -461,29 +488,29 @@ func (d *Document) from(from *model.Freelancer) error {
 }
 
 func (d *Document) to(client *model.Client) error {
-	d.po.SetX(HeaderInfoStartX)
+	d.po.SetX(ToStart)
 
 	d.setSubtleNormalText()
 	_ = d.po.Cell(&gopdf.Rect{W: 155}, "To")
-	d.po.Br(20)
+	d.po.Br(LineHeigth)
 
-	d.po.SetX(HeaderInfoStartX)
+	d.po.SetX(ToStart)
 	d.setNormalText()
 	_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Name)
 	d.po.Br(18)
 
-	d.po.SetX(HeaderInfoStartX)
+	d.po.SetX(ToStart)
 	_ = d.po.Cell(&gopdf.Rect{W: 250}, client.VatID)
 	d.po.Br(18)
 
 	if client.Address1 != "" {
-		d.po.SetX(HeaderInfoStartX)
+		d.po.SetX(ToStart)
 		_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Address1)
 		d.po.Br(18)
 	}
 
 	if client.Address2 != "" {
-		d.po.SetX(HeaderInfoStartX)
+		d.po.SetX(ToStart)
 		_ = d.po.Cell(&gopdf.Rect{W: 250}, client.Address2)
 		d.po.Br(18)
 	}
@@ -542,27 +569,6 @@ func (d *Document) setTitleText() error {
 	}
 
 	return nil
-}
-
-func WriteNotes(pdf *gopdf.GoPdf, notes string) {
-	pdf.SetY(600)
-
-	_ = pdf.SetFont("Inter", "", 9)
-	pdf.SetTextColor(55, 55, 55)
-	_ = pdf.Cell(nil, "NOTES")
-	pdf.Br(18)
-	_ = pdf.SetFont("Inter", "", 9)
-	pdf.SetTextColor(0, 0, 0)
-
-	formattedNotes := strings.ReplaceAll(notes, `\n`, "\n")
-	notesLines := strings.Split(formattedNotes, "\n")
-
-	for i := 0; i < len(notesLines); i++ {
-		_ = pdf.Cell(nil, notesLines[i])
-		pdf.Br(15)
-	}
-
-	pdf.Br(48)
 }
 
 func getImageScaledDimension(imagePath string) (scaledWidth, scaledHeight float64) {

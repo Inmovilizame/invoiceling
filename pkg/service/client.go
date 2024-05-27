@@ -9,6 +9,10 @@ import (
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
+const (
+	countryCodeLength = 2
+)
+
 var (
 	ErrNotValidVatFormat = errors.New("vat: format not valid")
 	ErrCountryNotFound   = errors.New("vat: country not found")
@@ -74,6 +78,11 @@ func (cs *Client) Delete(invoiceID string) error {
 
 // ValidateNumberFormat validates a VAT number by its format.
 func ValidateNumberFormat(n string) error {
+	n = strings.ToUpper(n)
+	if len(n) <= countryCodeLength {
+		return ErrNotValidVatFormat
+	}
+
 	patterns := map[string]string{
 		"AT": `U[A-Z0-9]{8}`,
 		"BE": `(0[0-9]{9}|[0-9]{10})`,
@@ -105,12 +114,6 @@ func ValidateNumberFormat(n string) error {
 		"SI": `[0-9]{8}`,
 		"SK": `[0-9]{10}`,
 	}
-
-	if len(n) < 3 {
-		return ErrNotValidVatFormat
-	}
-
-	n = strings.ToUpper(n)
 
 	pattern, ok := patterns[n[0:2]]
 	if !ok {

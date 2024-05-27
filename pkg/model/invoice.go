@@ -1,5 +1,9 @@
 package model
 
+const (
+	DefaultDueSpan = 30
+)
+
 type Invoice struct {
 	ID     string `json:"id" yaml:"id"`
 	Status string `json:"status" yaml:"status"`
@@ -20,7 +24,7 @@ type Invoice struct {
 
 	Payment *Payment `json:"payment" yaml:"payment"`
 
-	Note string `json:"note" yaml:"note"`
+	Note []string `json:"note" yaml:"note"`
 }
 
 type Item struct {

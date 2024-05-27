@@ -2,7 +2,6 @@ package container
 
 import (
 	"github.com/Inmovilizame/invoiceling/assets"
-	"github.com/Inmovilizame/invoiceling/internal/pdf"
 	"github.com/Inmovilizame/invoiceling/internal/repository"
 	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/viper"
@@ -39,7 +38,9 @@ func NewFreelancerService() *service.Freelancer {
 	)
 }
 
-func NewPdf() (*pdf.Document, error) {
+func NewDocumentService() (*service.Document, error) {
+	repo := repository.CfgRepo{}
+
 	interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
 	if err != nil {
 		return nil, err
@@ -50,10 +51,12 @@ func NewPdf() (*pdf.Document, error) {
 		return nil, err
 	}
 
-	doc, err := pdf.NewGoPdf(map[string][]byte{
+	fontMap := map[string][]byte{
 		"Inter":      interFont,
 		"Inter-Bold": interBoldFont,
-	})
+	}
+
+	doc, err := service.NewInvoiceRender(fontMap, repo.GetPdfOutputDir(), false)
 	if err != nil {
 		return nil, err
 	}

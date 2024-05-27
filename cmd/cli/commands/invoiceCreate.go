@@ -13,10 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package commands
 
 import (
 	"fmt"
+
+	"github.com/Inmovilizame/invoiceling/pkg/model"
 
 	"github.com/Inmovilizame/invoiceling/internal/container"
 
@@ -40,6 +42,9 @@ var invoiceCreateCmd = &cobra.Command{
 		invoiceID, err := cmd.Flags().GetInt("id")
 		cobra.CheckErr(err)
 
+		note, err := cmd.Flags().GetString("note")
+		cobra.CheckErr(err)
+
 		fs := container.NewFreelancerService()
 		me := fs.GetFreelancer()
 
@@ -47,7 +52,7 @@ var invoiceCreateCmd = &cobra.Command{
 		client := cs.Read(clientID)
 
 		is := container.NewInvoiceService()
-		invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD)
+		invoice, err := is.Create(invoiceID, me, client, due, service.DF_YMD, note)
 		cobra.CheckErr(err)
 
 		fmt.Printf("Invoice created: %s\n", invoice.ID)
@@ -58,6 +63,10 @@ func init() {
 	invoiceCmd.AddCommand(invoiceCreateCmd)
 
 	invoiceCreateCmd.Flags().IntP("id", "i", 0, "Invoice ID")
-	invoiceCreateCmd.Flags().StringP("client", "c", "client1", "Invoice client")
-	invoiceCreateCmd.Flags().IntP("due", "d", 30, "Invoice due date")
+	invoiceCreateCmd.Flags().StringP("client", "c", "default", "Invoice client")
+	invoiceCreateCmd.Flags().IntP("due", "d", model.DefaultDueSpan, "Invoice due date")
+	invoiceCreateCmd.Flags().StringP("note", "n", "", "Add custom note to the invoice")
+
+	err := invoiceCreateCmd.MarkFlagRequired("client")
+	cobra.CheckErr(err)
 }

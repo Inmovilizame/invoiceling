@@ -8,6 +8,11 @@ import (
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
+const (
+	ro_mask = 0o400
+	rw_mask = 0o600
+)
+
 type Filter[T any] func(T) bool
 
 func readClientFromFile(invoicePath string) (*model.Client, error) {

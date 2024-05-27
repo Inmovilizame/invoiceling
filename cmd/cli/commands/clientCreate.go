@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package commands
 
 import (
 	"github.com/Inmovilizame/invoiceling/internal/container"
@@ -33,7 +33,7 @@ will be used to compose a unique id`,
 		name, err := cmd.Flags().GetString("name")
 		cobra.CheckErr(err)
 
-		vatID, err := cmd.Flags().GetString("vatId")
+		vatID, err := cmd.Flags().GetString("vat_id")
 		cobra.CheckErr(err)
 
 		address1, err := cmd.Flags().GetString("address1")
@@ -53,11 +53,11 @@ func init() {
 	clientCmd.AddCommand(clientCreateCmd)
 
 	clientCreateCmd.Flags().SortFlags = false
+	clientCreateCmd.Flags().StringP("id", "i", "", "Provide a custom client id")
 	clientCreateCmd.Flags().StringP("name", "n", "", "Client mame [req]")
 	clientCreateCmd.Flags().StringP("vat_id", "v", "", "Client VAT ID [req]")
 	clientCreateCmd.Flags().StringP("address1", "s", "", "Client address street info [req]")
 	clientCreateCmd.Flags().StringP("address2", "c", "", "Client address region state country")
-	clientCreateCmd.Flags().StringP("id", "i", "", "Provide a custom client id")
 
 	err := clientCreateCmd.MarkFlagRequired("name")
 	cobra.CheckErr(err)

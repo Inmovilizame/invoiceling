@@ -7,6 +7,10 @@ import (
 
 type CfgRepo struct{}
 
+func (c CfgRepo) GetPdfOutputDir() string {
+	return viper.GetString("dirs.pdf")
+}
+
 func (c CfgRepo) GetCurrency() string {
 	return viper.GetString("invoice.currency")
 }

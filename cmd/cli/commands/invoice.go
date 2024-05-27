@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+package commands
 
 import (
 	"strings"
@@ -52,7 +52,7 @@ func filterInvoice(filter string) repository.Filter[*model.Invoice] {
 			strings.Contains(i.To.VatID, filter) ||
 			strings.Contains(i.To.Address1, filter) ||
 			strings.Contains(i.To.Address2, filter) ||
-			strings.Contains(i.Note, filter) {
+			strings.Contains(strings.Join(i.Note, ":"), filter) {
 			return true
 		}
 
