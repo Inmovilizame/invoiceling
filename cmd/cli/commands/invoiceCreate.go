@@ -54,7 +54,7 @@ var invoiceCreateCmd = &cobra.Command{
 		cobra.CheckErr(err)
 
 		is := container.NewInvoiceService()
-		invoice, err := is.Create(invoiceID, clientID, due, service.DF_YMD, note, vat, retention)
+		invoice, err := is.Create(invoiceID, clientID, due, service.DFYMD, note, vat, retention)
 		cobra.CheckErr(err)
 
 		fmt.Printf("InvoiceService created: %s\n", invoice.ID)

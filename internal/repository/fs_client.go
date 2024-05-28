@@ -72,7 +72,7 @@ func (fc *FsClient) Create(client *model.Client) error {
 		return errors.New("client already exists")
 	}
 
-	err = os.WriteFile(clientPath, jsonBytes, 0o600)
+	err = os.WriteFile(clientPath, jsonBytes, rwMask)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (fc *FsClient) Update(clientID string, client *model.Client) *model.Client 
 
 	clientPath := filepath.Join(fc.basePath, clientID+".json")
 
-	err = os.WriteFile(clientPath, jsonBytes, 0o600)
+	err = os.WriteFile(clientPath, jsonBytes, rwMask)
 	if err != nil {
 		fmt.Printf("Error while updating client %s. %v", clientID, err)
 		return nil
@@ -113,7 +113,7 @@ func (fc *FsClient) Update(clientID string, client *model.Client) *model.Client 
 func (fc *FsClient) Delete(clientID string) error {
 	clientPath := filepath.Join(fc.basePath, clientID+".json")
 
-	err := os.WriteFile(clientPath, []byte{}, 0o600)
+	err := os.WriteFile(clientPath, []byte{}, roMask)
 	if err != nil {
 		fmt.Printf("Error while updating invoice %s. %v", clientID, err)
 		return err

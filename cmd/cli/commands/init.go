@@ -30,7 +30,7 @@ var (
 	allowedFormats = []string{"yaml", "yml", "json"}
 	dirs           = []string{"client", "invoice", "pdf", "static"}
 
-	defaultMask = os.FileMode(0755)
+	defaultMask = os.FileMode(0o755) //nolint:gomnd //static value
 )
 
 // initCmd represents the init command

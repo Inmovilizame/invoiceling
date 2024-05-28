@@ -22,10 +22,13 @@ const (
 )
 
 const (
-	HeaderInfoStartX = 400
-	HeaderInfoWidth  = 155
-	HeaderLogoSize   = 100
-	HeaderMinHeight  = 160
+	HeaderInfoStartX    = 400
+	HeaderInfoWidth     = 155
+	HeaderInfoName      = 45
+	HeaderInfoSeparator = 10
+	HeaderInfoValue     = 100
+	HeaderLogoSize      = 100
+	HeaderMinHeight     = 160
 )
 
 const (
@@ -195,6 +198,7 @@ func (d *Document) sendingInfo(from *model.Freelancer, client *model.Client) err
 	return nil
 }
 
+//nolint:funlen //TODO fix func length
 func (d *Document) items(items []model.Item, tax model.TaxInfo, currency string, payment model.Payment) error {
 	currSymbol := model.GetCurrencySymbol(currency)
 
@@ -298,19 +302,32 @@ func (d *Document) items(items []model.Item, tax model.TaxInfo, currency string,
 		return err
 	}
 
+	mark := "*"
+	vatLabel := "VAT"
+	retentionLabel := "IRPF"
+
+	if tax.Vat == 0 {
+		vatLabel += mark
+		mark += "*"
+	}
+
+	if tax.Retention != 0 {
+		retentionLabel += mark
+	}
+
 	err = d.itemTableRow(
 		"",
-		"VAT",
+		vatLabel,
 		strconv.FormatFloat(tax.Vat, 'f', 0, 64)+"%",
 		strconv.FormatFloat(tax.GetVat(subtotal), 'f', 2, 64)+currSymbol)
 	if err != nil {
 		return err
 	}
 
-	if tax.Retention != 0. {
+	if tax.Retention != 0 {
 		err = d.itemTableRow(
 			"",
-			"IRPF",
+			retentionLabel,
 			"-"+strconv.FormatFloat(tax.Retention, 'f', 0, 64)+"%",
 			strconv.FormatFloat(-tax.GetRetention(subtotal), 'f', 2, 64)+currSymbol)
 		if err != nil {
@@ -353,7 +370,8 @@ func (d *Document) notes(notes model.Notes) error {
 		}
 
 		mark += "*"
-		d.po.Br(5)
+
+		d.po.Br(5) //nolint:gomnd //static value
 	}
 
 	return nil
@@ -400,7 +418,7 @@ func (d *Document) headingTitle() error {
 		return err
 	}
 
-	d.po.Br(36)
+	d.po.Br(36) //nolint:gomnd //static value
 
 	return nil
 }
@@ -408,7 +426,7 @@ func (d *Document) headingTitle() error {
 func (d *Document) headingInfoLine(key, value string) error {
 	d.setSubtleNormalText()
 
-	err := d.po.CellWithOption(&gopdf.Rect{W: 45},
+	err := d.po.CellWithOption(&gopdf.Rect{W: HeaderInfoName},
 		key,
 		d.getCellOptions(gopdf.Left),
 	)
@@ -416,7 +434,7 @@ func (d *Document) headingInfoLine(key, value string) error {
 		return err
 	}
 
-	err = d.po.CellWithOption(&gopdf.Rect{W: 10},
+	err = d.po.CellWithOption(&gopdf.Rect{W: HeaderInfoSeparator},
 		":",
 		d.getCellOptions(gopdf.Left),
 	)
@@ -427,7 +445,7 @@ func (d *Document) headingInfoLine(key, value string) error {
 	d.setNormalText()
 
 	err = d.po.CellWithOption(
-		&gopdf.Rect{W: 100},
+		&gopdf.Rect{W: HeaderInfoValue},
 		value,
 		d.getCellOptions(gopdf.Right),
 	)
@@ -530,7 +548,7 @@ func (d *Document) to(client *model.Client) error {
 		d.lastYPos = endY
 	}
 
-	return nil
+	return err
 }
 
 func (d *Document) getCellOptions(align int) gopdf.CellOption {
@@ -558,7 +576,6 @@ func (d *Document) setSubtleNormalText() {
 	if err != nil {
 		fmt.Println("Error Loading font: 'Inter'")
 	}
-
 }
 
 func (d *Document) setSubtleTotalText() {

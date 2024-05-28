@@ -29,7 +29,6 @@ func NewClientService() *service.Client {
 	)
 
 	return service.NewClientService(clientRepo)
-
 }
 
 func NewDocumentService() (*service.Document, error) {

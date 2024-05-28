@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ro_mask = 0o400
-	rw_mask = 0o600
+	roMask = 0o400
+	rwMask = 0o600
 )
 
 type Filter[T any] func(T) bool

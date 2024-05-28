@@ -14,9 +14,9 @@ import (
 type DateFormat string
 
 const (
-	DF_Text DateFormat = "Jan 02, 2006"
-	DF_YMD  DateFormat = "2006-01-02"
-	DF_DMY  DateFormat = "02/01/2006"
+	DFText DateFormat = "Jan 02, 2006"
+	DFYMD  DateFormat = "2006-01-02"
+	DFDMY  DateFormat = "02/01/2006"
 )
 
 type InvoiceRepo interface {
@@ -125,7 +125,7 @@ func (is *InvoiceService) getFormatedID(id int) string {
 			invoice := invoices[len(invoices)-1]
 
 			idParts := strings.Split(invoice.ID, "-")
-			id, _ = strconv.Atoi(idParts[len(idParts)-1]) //nolint:errcheck,errcheck hack
+			id, _ = strconv.Atoi(idParts[len(idParts)-1]) //nolint:errcheck,errcheck //hack based on known format
 			id++
 		}
 	}

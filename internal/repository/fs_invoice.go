@@ -72,7 +72,7 @@ func (fi *FsInvoice) Create(invoice *model.Invoice) error {
 		return errors.New("invoice already exists")
 	}
 
-	err = os.WriteFile(invoicePath, jsonBytes, rw_mask)
+	err = os.WriteFile(invoicePath, jsonBytes, rwMask)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (fi *FsInvoice) Update(invoiceID string, invoice *model.Invoice) *model.Inv
 
 	invoicePath := filepath.Join(fi.basePath, invoiceID+".json")
 
-	err = os.WriteFile(invoicePath, jsonBytes, rw_mask)
+	err = os.WriteFile(invoicePath, jsonBytes, rwMask)
 	if err != nil {
 		fmt.Printf("Error while updating invoice %s. %v", invoiceID, err)
 		return nil
@@ -113,7 +113,7 @@ func (fi *FsInvoice) Update(invoiceID string, invoice *model.Invoice) *model.Inv
 func (fi *FsInvoice) Delete(invoiceID string) error {
 	invoicePath := filepath.Join(fi.basePath, invoiceID+".json")
 
-	err := os.WriteFile(invoicePath, []byte{}, rw_mask)
+	err := os.WriteFile(invoicePath, []byte{}, roMask)
 	if err != nil {
 		fmt.Printf("Error while deleting invoice %s. %v", invoiceID, err)
 		return err

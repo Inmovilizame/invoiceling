@@ -32,11 +32,11 @@ type TaxInfo struct {
 }
 
 func (t TaxInfo) GetVat(amount float64) float64 {
-	return amount * t.Vat / 100
+	return amount * t.Vat / 100 //nolint:gomnd //calculating percentage
 }
 
 func (t TaxInfo) GetRetention(amount float64) float64 {
-	return amount * t.Retention / 100
+	return amount * t.Retention / 100 //nolint:gomnd //calculating percentage
 }
 
 type Item struct {
