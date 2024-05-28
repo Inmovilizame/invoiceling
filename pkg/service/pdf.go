@@ -134,7 +134,7 @@ func (d *Document) header(logo, id, date, due string) error {
 		return err
 	}
 
-	err = d.headingInfoLine("InvoiceService", id)
+	err = d.headingInfoLine("Invoice", id)
 	if err != nil {
 		return err
 	}
@@ -462,41 +462,62 @@ func (d *Document) from(from *model.Freelancer) error {
 	d.setSubtleNormalText()
 
 	err := d.po.Cell(&gopdf.Rect{W: FromWidth}, "From")
-	fmt.Printf("invoiceSerice.from: error %v", err)
-	d.po.Br(LineHeight)
+	if err != nil {
+		fmt.Printf("invoiceService.from: error %v", err)
+	}
 
+	d.po.Br(LineHeight)
 	d.setNormalText()
+
 	err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.Name)
-	fmt.Printf("invoiceSerice.from: error %v", err)
+	if err != nil {
+		fmt.Printf("invoiceService.from: error %v", err)
+	}
+
 	d.po.Br(FromToLineHeight)
 
 	if from.Company != "" {
 		err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.Company)
-		fmt.Printf("invoiceSerice.from: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.from: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
 	if from.VatID != "" {
 		err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.VatID)
-		fmt.Printf("invoiceSerice.from: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.from: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
 	if from.Address1 != "" {
 		err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.Address1)
-		fmt.Printf("invoiceSerice.from: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.from: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
 	if from.Address2 != "" {
 		err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.Address2)
-		fmt.Printf("invoiceSerice.from: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.from: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
 	if from.Phone != "" {
 		err = d.po.Cell(&gopdf.Rect{W: FromWidth}, from.Phone)
-		fmt.Printf("invoiceSerice.from: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.from: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
@@ -512,34 +533,51 @@ func (d *Document) from(from *model.Freelancer) error {
 
 func (d *Document) to(client *model.Client) error {
 	d.po.SetX(ToStart)
-
 	d.setSubtleNormalText()
-	err := d.po.Cell(&gopdf.Rect{W: ToWidth}, "To")
-	fmt.Printf("invoiceSerice.to: error %v", err)
-	d.po.Br(LineHeight)
 
+	err := d.po.Cell(&gopdf.Rect{W: ToWidth}, "To")
+	if err != nil {
+		fmt.Printf("invoiceService.to: error %v", err)
+	}
+
+	d.po.Br(LineHeight)
 	d.po.SetX(ToStart)
 	d.setNormalText()
-	err = d.po.Cell(&gopdf.Rect{W: ToWidth}, client.Name)
-	fmt.Printf("invoiceSerice.to: error %v", err)
-	d.po.Br(FromToLineHeight)
 
+	err = d.po.Cell(&gopdf.Rect{W: ToWidth}, client.Name)
+	if err != nil {
+		fmt.Printf("invoiceService.to: error %v", err)
+	}
+
+	d.po.Br(FromToLineHeight)
 	d.po.SetX(ToStart)
+
 	err = d.po.Cell(&gopdf.Rect{W: ToWidth}, client.VatID)
-	fmt.Printf("invoiceSerice.to: error %v", err)
+	if err != nil {
+		fmt.Printf("invoiceService.to: error %v", err)
+	}
+
 	d.po.Br(FromToLineHeight)
 
 	if client.Address1 != "" {
 		d.po.SetX(ToStart)
+
 		err = d.po.Cell(&gopdf.Rect{W: ToWidth}, client.Address1)
-		fmt.Printf("invoiceSerice.to: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.to: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
 	if client.Address2 != "" {
 		d.po.SetX(ToStart)
+
 		err = d.po.Cell(&gopdf.Rect{W: ToWidth}, client.Address2)
-		fmt.Printf("invoiceSerice.to: error %v", err)
+		if err != nil {
+			fmt.Printf("invoiceService.to: error %v", err)
+		}
+
 		d.po.Br(FromToLineHeight)
 	}
 
