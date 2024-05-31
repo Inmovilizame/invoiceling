@@ -37,16 +37,16 @@ to quickly create a Cobra application.`,
 		invoiceID, err := cmd.Flags().GetString("invoice")
 		cobra.CheckErr(err)
 
-		doc, err := container.NewDocumentService()
+		draft, err := cmd.Flags().GetBool("draft")
+		cobra.CheckErr(err)
+
+		doc, err := container.NewDocumentService(draft)
 		cobra.CheckErr(err)
 
 		is := container.NewInvoiceService()
 		invoice := is.Read(invoiceID)
 
 		err = doc.Render(invoice)
-		cobra.CheckErr(err)
-
-		err = doc.SaveTo(invoiceID + ".pdf")
 		cobra.CheckErr(err)
 
 		fmt.Println("Generated PDF for:", invoiceID)
@@ -57,4 +57,5 @@ func init() {
 	rootCmd.AddCommand(pdfCmd)
 
 	pdfCmd.Flags().StringP("invoice", "i", "", "Invoice id to render")
+	pdfCmd.Flags().BoolP("draft", "d", false, "Generate draft PFD")
 }

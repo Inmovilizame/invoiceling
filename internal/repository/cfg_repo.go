@@ -7,6 +7,10 @@ import (
 
 type CfgRepo struct{}
 
+func (d CfgRepo) GetDebug() bool {
+	return viper.GetBool("debug")
+}
+
 func (c CfgRepo) GetNotes() map[string]string {
 	return map[string]string{
 		"vat_0":           viper.GetString("notes.vat_0"),

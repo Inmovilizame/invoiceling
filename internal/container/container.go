@@ -31,7 +31,7 @@ func NewClientService() *service.Client {
 	return service.NewClientService(clientRepo)
 }
 
-func NewDocumentService() (*service.Document, error) {
+func NewDocumentService(draft bool) (*service.Document, error) {
 	repo := repository.CfgRepo{}
 
 	interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
@@ -49,7 +49,7 @@ func NewDocumentService() (*service.Document, error) {
 		"Inter-Bold": interBoldFont,
 	}
 
-	doc, err := service.NewInvoiceRender(fontMap, repo.GetPdfOutputDir(), false)
+	doc, err := service.NewInvoiceRender(fontMap, repo.GetPdfOutputDir(), draft, repo.GetDebug())
 	if err != nil {
 		return nil, err
 	}

@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	FontNormalSize       = 10
-	FontSubtleNormalSize = 12
-	FontSubtleTotalSize  = 14
-	FontTitleSize        = 24
+	FontSizeNormal       = 10
+	FontSizeSubtleNormal = 12
+	FontSizeSubtleTotal  = 14
+	FontSizeTitle        = 24
+	FontSizeDraftMark    = 92
 	LineHeight           = 20
 	Margin               = 40
 )
@@ -45,14 +46,22 @@ const (
 	ItemAmountWidth = 80
 )
 
+const (
+	DRAFT_TEXT             = "DRAFT"
+	DRAFT_ALPHA            = 0.65
+	DRAFT_VERTICAL_SHIFT   = 200
+	DRAFT_HORIZONTAL_SHIFT = 350
+)
+
 type Document struct {
-	po        *gopdf.GoPdf
-	lastYPos  float64
 	debug     bool
+	draft     bool
+	lastYPos  float64
 	outputDir string
+	po        *gopdf.GoPdf
 }
 
-func NewInvoiceRender(fonts map[string][]byte, outputDir string, debug bool) (*Document, error) {
+func NewInvoiceRender(fonts map[string][]byte, outputDir string, draft, debug bool) (*Document, error) {
 	pdfObject := gopdf.GoPdf{}
 	pdfObject.Start(gopdf.Config{
 		PageSize: *gopdf.PageSizeA4,
@@ -69,14 +78,15 @@ func NewInvoiceRender(fonts map[string][]byte, outputDir string, debug bool) (*D
 	}
 
 	return &Document{
-		po:        &pdfObject,
+		debug:     debug,
+		draft:     draft,
 		lastYPos:  pdfObject.GetY(),
 		outputDir: outputDir,
-		debug:     debug,
+		po:        &pdfObject,
 	}, nil
 }
 
-func (d *Document) SaveTo(filename string) error {
+func (d *Document) saveTo(filename string) error {
 	dest := filepath.Join(d.outputDir, filename)
 	err := d.po.WritePdf(dest)
 
@@ -88,6 +98,8 @@ func (d *Document) SaveTo(filename string) error {
 }
 
 func (d *Document) Render(invoice *model.Invoice) error {
+	filename := invoice.ID + ".pdf"
+
 	err := d.header(invoice.Logo, invoice.ID, invoice.Date, invoice.Due)
 	if err != nil {
 		return err
@@ -108,11 +120,7 @@ func (d *Document) Render(invoice *model.Invoice) error {
 	d.po.Line(Margin, d.po.GetY(), gopdf.PageSizeA4.W-Margin, d.po.GetY())
 	d.po.Br(LineHeight)
 
-	err = d.items(
-		invoice.Items,
-		invoice.Tax,
-		invoice.Currency,
-		invoice.Payment)
+	err = d.items(invoice.Items, invoice.Tax, invoice.Currency, invoice.Payment)
 	if err != nil {
 		return err
 	}
@@ -121,6 +129,20 @@ func (d *Document) Render(invoice *model.Invoice) error {
 	d.po.Br(LineHeight)
 
 	err = d.notes(invoice.Notes)
+	if err != nil {
+		return err
+	}
+
+	if d.draft {
+		filename = invoice.ID + "_DRAFT.pdf"
+
+		err = d.draftOverlay()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = d.saveTo(filename)
 	if err != nil {
 		return err
 	}
@@ -377,6 +399,28 @@ func (d *Document) notes(notes model.Notes) error {
 	return nil
 }
 
+func (d *Document) draftOverlay() error {
+	d.setDraftText()
+
+	for i := 0; i < 4; i++ {
+		d.po.SetX(Margin)
+		d.po.SetY(Margin + float64(i*DRAFT_VERTICAL_SHIFT))
+
+		if i%2 == 1 {
+			d.po.SetX(gopdf.PageSizeA4.W - DRAFT_HORIZONTAL_SHIFT)
+		}
+
+		err := d.po.CellWithOption(nil, DRAFT_TEXT, gopdf.CellOption{
+			Transparency: &gopdf.Transparency{Alpha: DRAFT_ALPHA, BlendModeType: gopdf.Overlay},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d *Document) itemTableRow(desc, qty, rate, total string) error {
 	err := d.po.CellWithOption(&gopdf.Rect{W: ItemDescWidth}, desc, d.getCellOptions(gopdf.Left))
 	if err != nil {
@@ -404,12 +448,9 @@ func (d *Document) itemTableRow(desc, qty, rate, total string) error {
 }
 
 func (d *Document) headingTitle() error {
-	err := d.setTitleText()
-	if err != nil {
-		return err
-	}
+	d.setTitleText()
 
-	err = d.po.CellWithOption(
+	err := d.po.CellWithOption(
 		&gopdf.Rect{W: HeaderInfoWidth},
 		"INVOICE",
 		d.getCellOptions(gopdf.Center),
@@ -601,7 +642,7 @@ func (d *Document) getCellOptions(align int) gopdf.CellOption {
 func (d *Document) setNormalText() {
 	d.po.SetTextColor(colorBlack())
 
-	err := d.po.SetFont("Inter", "", FontNormalSize)
+	err := d.po.SetFont("Inter", "", FontSizeNormal)
 	if err != nil {
 		fmt.Println("Error Loading font: 'Inter'")
 	}
@@ -610,7 +651,7 @@ func (d *Document) setNormalText() {
 func (d *Document) setSubtleNormalText() {
 	d.po.SetTextColor(colorLavender())
 
-	err := d.po.SetFont("Inter", "", FontSubtleNormalSize)
+	err := d.po.SetFont("Inter", "", FontSizeSubtleNormal)
 	if err != nil {
 		fmt.Println("Error Loading font: 'Inter'")
 	}
@@ -619,21 +660,28 @@ func (d *Document) setSubtleNormalText() {
 func (d *Document) setSubtleTotalText() {
 	d.po.SetTextColor(colorLavender())
 
-	err := d.po.SetFont("Inter-Bold", "", FontSubtleTotalSize)
+	err := d.po.SetFont("Inter-Bold", "", FontSizeSubtleTotal)
 	if err != nil {
 		fmt.Println("Error Loading font: 'Inter-Bold'")
 	}
 }
 
-func (d *Document) setTitleText() error {
+func (d *Document) setTitleText() {
 	d.po.SetTextColor(colorBlack())
 
-	err := d.po.SetFont("Inter-Bold", "", FontTitleSize)
+	err := d.po.SetFont("Inter-Bold", "", FontSizeTitle)
 	if err != nil {
-		return err
+		fmt.Println("Error Loading font: 'Inter-Bold'")
 	}
+}
 
-	return nil
+func (d *Document) setDraftText() {
+	d.po.SetTextColor(colorGray())
+
+	err := d.po.SetFont("Inter-Bold", "", FontSizeDraftMark)
+	if err != nil {
+		fmt.Println("Error Loading font: 'Inter-Bold'")
+	}
 }
 
 func colorBlue() (red, green, blue uint8) {
