@@ -1,8 +1,8 @@
 package container
 
 import (
-	"github.com/Inmovilizame/invoiceling/assets"
 	"github.com/Inmovilizame/invoiceling/internal/repository"
+	"github.com/Inmovilizame/invoiceling/pkg/render"
 	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/viper"
 )
@@ -31,27 +31,22 @@ func NewClientService() *service.Client {
 	return service.NewClientService(clientRepo)
 }
 
-func NewDocumentService(draft bool) (*service.Document, error) {
+func NewDocumentService(renderType string, draft bool) (*service.Document, error) {
 	repo := repository.CfgRepo{}
 
-	interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
+	doc, err := service.NewDocumentService(repo.GetDebug(), draft, repo.GetPdfOutputDir())
 	if err != nil {
 		return nil, err
 	}
 
-	interBoldFont, err := assets.FS.ReadFile("fonts/Inter-Bold.ttf")
-	if err != nil {
-		return nil, err
-	}
+	switch renderType {
+	case "Basic":
+		r, err := render.NewPdfBasicRender()
+		if err != nil {
+			return nil, err
+		}
 
-	fontMap := map[string][]byte{
-		"Inter":      interFont,
-		"Inter-Bold": interBoldFont,
-	}
-
-	doc, err := service.NewInvoiceRender(fontMap, repo.GetPdfOutputDir(), draft, repo.GetDebug())
-	if err != nil {
-		return nil, err
+		doc.SetRenderer(r)
 	}
 
 	return doc, nil

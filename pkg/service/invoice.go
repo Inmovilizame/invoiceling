@@ -13,12 +13,6 @@ import (
 
 type DateFormat string
 
-const (
-	DFText DateFormat = "Jan 02, 2006"
-	DFYMD  DateFormat = "2006-01-02"
-	DFDMY  DateFormat = "02/01/2006"
-)
-
 type InvoiceRepo interface {
 	List(filter repository.Filter[*model.Invoice]) []*model.Invoice
 	Create(invoice *model.Invoice) error
@@ -59,43 +53,29 @@ func (is *InvoiceService) Create(
 	id int,
 	clientID string,
 	dueDays int,
-	dateFormat DateFormat,
 	note string,
 	vat,
 	retention float64,
 ) (*model.Invoice, error) {
-	now := time.Now()
-	due := now.AddDate(0, 0, dueDays)
-
-	invoice := &model.Invoice{
-		ID:       is.getFormatedID(id),
-		Status:   "CREATED",
-		Logo:     is.cfgRepo.GetLogo(),
-		From:     is.cfgRepo.GetFreelancer(),
-		To:       *is.cRepo.Read(clientID),
-		Date:     now.Format(string(dateFormat)),
-		Due:      due.Format(string(dateFormat)),
-		Items:    []model.Item{},
-		Tax:      model.TaxInfo{},
-		Discount: 0,
-		Currency: is.cfgRepo.GetCurrency(),
-		Payment:  is.cfgRepo.GetPaymentInfo(),
-		Notes:    model.Notes{Default: note},
-	}
-
+	idString := is.getFormatedID(id)
 	notes := is.cfgRepo.GetNotes()
+	currency := is.cfgRepo.GetCurrency()
+	payment := is.cfgRepo.GetPaymentInfo()
+	dueHours := dueDays * 24
 
-	invoice.Tax.Vat = vat
-	if vat == 0 {
-		invoice.Notes.Vat0 = notes["vat_0"]
+	due, err := time.ParseDuration(fmt.Sprintf("%dh", dueHours))
+	if err != nil {
+		return nil, err
 	}
 
-	invoice.Tax.Retention = retention
-	if retention != 0 {
-		invoice.Notes.RetentionNot0 = notes["retention_not_0"]
-	}
+	invoice := model.NewInvoice(idString, due, currency, payment)
+	invoice.Logo = is.cfgRepo.GetLogo()
+	invoice.From = is.cfgRepo.GetFreelancer()
+	invoice.To = *is.cRepo.Read(clientID)
+	invoice.Notes = model.Notes{Default: note}
+	invoice.SetTaxes(vat, retention, notes)
 
-	err := is.iRepo.Create(invoice)
+	err = is.iRepo.Create(invoice)
 	if err != nil {
 		return nil, err
 	}

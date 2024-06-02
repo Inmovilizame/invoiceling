@@ -32,7 +32,7 @@ var invoiceCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, _ []string) {
 		is := container.NewInvoiceService()
 		for _, i := range is.List(filterInvoice("")) {
-			cmd.Printf("Invoice: %s | %s \n", i.ID, i.Date)
+			cmd.Printf("Invoice: %s | %s \n", i.ID, i.Date.Format("2006-01-02"))
 		}
 	},
 }

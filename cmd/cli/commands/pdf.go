@@ -40,7 +40,10 @@ to quickly create a Cobra application.`,
 		draft, err := cmd.Flags().GetBool("draft")
 		cobra.CheckErr(err)
 
-		doc, err := container.NewDocumentService(draft)
+		renderer, err := cmd.Flags().GetString("renderer")
+		cobra.CheckErr(err)
+
+		doc, err := container.NewDocumentService(renderer, draft)
 		cobra.CheckErr(err)
 
 		is := container.NewInvoiceService()
@@ -58,4 +61,5 @@ func init() {
 
 	pdfCmd.Flags().StringP("invoice", "i", "", "Invoice id to render")
 	pdfCmd.Flags().BoolP("draft", "d", false, "Generate draft PFD")
+	pdfCmd.Flags().StringP("renderer", "r", "Basic", "Generate draft PFD")
 }

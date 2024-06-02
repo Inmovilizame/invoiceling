@@ -24,7 +24,6 @@ import (
 
 	"github.com/Inmovilizame/invoiceling/internal/container"
 
-	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +53,7 @@ var invoiceCreateCmd = &cobra.Command{
 		cobra.CheckErr(err)
 
 		is := container.NewInvoiceService()
-		invoice, err := is.Create(invoiceID, clientID, due, service.DFYMD, note, vat, retention)
+		invoice, err := is.Create(invoiceID, clientID, due, note, vat, retention)
 		cobra.CheckErr(err)
 
 		fmt.Printf("InvoiceService created: %s\n", invoice.ID)
