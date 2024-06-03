@@ -1,4 +1,4 @@
-package repository
+package repository //nolint:dupl //keep duplicate for now
 
 import (
 	"encoding/json"

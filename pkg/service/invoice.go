@@ -11,7 +11,9 @@ import (
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
-type DateFormat string
+const (
+	HoursInDay = 24
+)
 
 type InvoiceRepo interface {
 	List(filter repository.Filter[*model.Invoice]) []*model.Invoice
@@ -61,7 +63,7 @@ func (is *InvoiceService) Create(
 	notes := is.cfgRepo.GetNotes()
 	currency := is.cfgRepo.GetCurrency()
 	payment := is.cfgRepo.GetPaymentInfo()
-	dueHours := dueDays * 24
+	dueHours := dueDays * HoursInDay
 
 	due, err := time.ParseDuration(fmt.Sprintf("%dh", dueHours))
 	if err != nil {

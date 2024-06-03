@@ -47,6 +47,13 @@ func NewDocumentService(renderType string, draft bool) (*service.Document, error
 		}
 
 		doc.SetRenderer(r)
+	default:
+		r, err := render.NewPdfBasicRender()
+		if err != nil {
+			return nil, err
+		}
+
+		doc.SetRenderer(r)
 	}
 
 	return doc, nil

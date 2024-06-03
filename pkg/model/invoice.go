@@ -20,7 +20,7 @@ func (i *Item) GetAmount() float64 {
 }
 
 func (i *Item) GetVat() float64 {
-	return i.GetAmount() * i.Vat / 100
+	return i.GetAmount() * i.Vat / 100 //nolint:gomnd //static percentage calculation
 }
 
 type Notes struct {

@@ -7,7 +7,7 @@ import (
 
 type CfgRepo struct{}
 
-func (d CfgRepo) GetDebug() bool {
+func (c CfgRepo) GetDebug() bool {
 	return viper.GetBool("debug")
 }
 
