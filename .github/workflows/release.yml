@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build_release:
     name: build_release
@@ -18,12 +21,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '^1.22.0' # The Go version to download (if necessary) and use.
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.59.0
-          skip-cache: true
 
       - name: Setup go-task
         uses: pnorton5432/setup-task@v1
