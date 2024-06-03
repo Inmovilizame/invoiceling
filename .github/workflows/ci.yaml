@@ -31,8 +31,5 @@ jobs:
         with:
           task-version: 3.37.2
 
-      - name: lint
-        run: task lint
-
       - name: build
         run: task build

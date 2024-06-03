@@ -30,3 +30,4 @@ client/*
 invoice/*
 pdf/*
 static/*
+bin/*

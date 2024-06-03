@@ -2,6 +2,12 @@ version: '3'
 
 vars:
   APP: invoiceling
+  BIN_DIR: ./bin
+  WINDOWS_OS: windows
+  LINUX_OS: linux
+  MAC_OS: darwin
+  ARCH_64: amd64
+  ARCH_ARM: arm64
 
 tasks:
   cleanup:
@@ -12,7 +18,27 @@ tasks:
   build:
     desc: "build the compiled binary"
     cmds:
-      - go build -o {{.APP}} ./cmd/cli/main.go
+      - go build -o ./bin/{{.APP}} ./cmd/cli/main.go
+
+  build-darwin:
+    desc: "build macos binary"
+    cmds:
+      - GOOS=darwin GOARCH=amd64 go build -o ./bin/{{.APP}} ./cmd/cli/main.go
+      - tar -czvf ./bin/{{.APP}}.darwin-amd64.tar.gz ./bin/{{.APP}}
+      - GOOS=darwin GOARCH=arm64 go build -o ./bin/{{.APP}} ./cmd/cli/main.go
+      - tar -czvf ./bin/{{.APP}}.darwin-arm64.tar.gz ./bin/{{.APP}}
+
+  build-linux:
+    desc: "build linux binary"
+    cmds:
+      - GOOS=linux GOARCH=amd64 go build -o ./bin/{{.APP}} ./cmd/cli/main.go
+      - tar -czvf ./bin/{{.APP}}.linux-amd64.tar.gz ./bin/{{.APP}}
+
+  build-windows:
+    desc: "build linux binary"
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build -o ./bin/{{.APP}} ./cmd/cli/main.go
+      - tar -czvf ./bin/{{.APP}}.windows-amd64.tar.gz ./bin/{{.APP}}
 
   test:
     desc: "run all unit tests"

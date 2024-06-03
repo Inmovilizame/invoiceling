@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_release:
+    name: build_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.22.0' # The Go version to download (if necessary) and use.
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59.0
+          skip-cache: true
+
+      - name: Setup go-task
+        uses: pnorton5432/setup-task@v1
+        with:
+          task-version: 3.37.2
+
+      - name: build
+        run: task build
+
+      - name: version
+        run: echo "verion=$(./bin/invoiceling --version | cut -d' ' -f 3)" >> $GITHUB_OUTPUT
+        id: version
+
+      - name: build artifacts
+        run: task build-linux && task build-windows && task build-darwin
+
+      - name: Resolve Previous tag
+        id: previous_tag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+
+      - name: Build changelog
+        id: github_release
+        uses: mikepenz/release-changelog-builder-action@v1
+        with:
+          configuration: '.github/changelog-configuration.json'
+          fromTag: ${{ steps.previous_tag.outputs.tag}}
+          toTag: ${{ steps.version.outputs.version}}
+          failOnError: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Create Release
+        id: create_release
+        if: ${{ steps.previous_tag.outputs.tag != steps.tag.outputs.new_tag }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.new_tag }}
+          name: ${{ steps.tag.outputs.new_tag }}
+          body: ${{ steps.github_release.outputs.changelog }}
+          files: |
+            ./bin/invoiceling.darwin-amd64.tar.gz
+            ./bin/invoiceling.darwin-arm64.tar.gz
+            ./bin/invoiceling.linux-amd64.tar.gz
+            ./bin/invoiceling.windows-amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
