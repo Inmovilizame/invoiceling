@@ -25,8 +25,8 @@ func (i *Item) GetVat() float64 {
 
 type Notes struct {
 	Default       string `json:"default" yaml:"default"`
-	Vat0          string `json:"vat0" yaml:"vat0"`
 	RetentionNot0 string `json:"retentionNot0" yaml:"retentionNot0"`
+	Vat0          string `json:"vat0" yaml:"vat0"`
 }
 
 func (n Notes) ToSlice() []string {
@@ -56,11 +56,11 @@ type TaxInfo struct {
 	Retention float64 `json:"retention" yaml:"retention"`
 }
 
-func (t TaxInfo) GetVat(amount float64) float64 {
+func (t TaxInfo) VatAmount(amount float64) float64 {
 	return amount * t.Vat / 100 //nolint:gomnd //calculating percentage
 }
 
-func (t TaxInfo) GetRetention(amount float64) float64 {
+func (t TaxInfo) RetentionAmount(amount float64) float64 {
 	return amount * t.Retention / 100 //nolint:gomnd //calculating percentage
 }
 
@@ -86,7 +86,12 @@ type Invoice struct {
 	Notes Notes `json:"notes" yaml:"notes"`
 }
 
-func NewInvoice(id string, due time.Duration, currency string, payment Payment) *Invoice {
+func NewInvoice(id string, due time.Duration, currency, note, noDueNote string) *Invoice {
+	notes := Notes{Default: note}
+	if due == 0 {
+		notes.Default += " " + noDueNote
+	}
+
 	return &Invoice{
 		ID:       id,
 		Status:   "CREATED",
@@ -96,7 +101,7 @@ func NewInvoice(id string, due time.Duration, currency string, payment Payment) 
 		Tax:      TaxInfo{},
 		Discount: 0,
 		Currency: currency,
-		Payment:  payment,
+		Notes:    notes,
 	}
 }
 

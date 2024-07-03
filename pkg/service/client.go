@@ -18,14 +18,6 @@ var (
 	ErrCountryNotFound   = errors.New("vat: country not found")
 )
 
-type ClientRepo interface {
-	List(filter repository.Filter[*model.Client]) []*model.Client
-	Create(client *model.Client) error
-	Read(clientID string) *model.Client
-	Update(clientID string, invoice *model.Client) *model.Client
-	Delete(clientID string) error
-}
-
 type Client struct {
 	repo ClientRepo
 }
@@ -68,8 +60,8 @@ func (cs *Client) Read(id string) *model.Client {
 	return cs.repo.Read(id)
 }
 
-func (cs *Client) Update(invoiceID string, invoice *model.Client) *model.Client {
-	return cs.repo.Update(invoiceID, invoice)
+func (cs *Client) Update(invoice *model.Client) *model.Client {
+	return cs.repo.Update(invoice)
 }
 
 func (cs *Client) Delete(invoiceID string) error {
