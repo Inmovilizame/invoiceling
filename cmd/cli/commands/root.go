@@ -12,7 +12,7 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "invoiceling",
-	Version: "v0.1.1",
+	Version: "0.1.2",
 	Short:   "CLI based invoicing tool for freelancers",
 	Long: `Simple CLI tool to manage invoice for freelancers.
 	Generate, store and transform to pdfObject.`,
