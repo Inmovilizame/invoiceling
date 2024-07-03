@@ -85,6 +85,7 @@ func defaultConfig() {
 	viper.SetDefault("payment.iban", "CC00 1234 1234 12 1234567890")
 	viper.SetDefault("payment.swift", "ABCDDEFFXXX")
 
+	viper.SetDefault("notes.no_due", "Please send payment within 28 days of receiving this invoice.")
 	viper.SetDefault("notes.vat_0", "Invoice exempt from VAT pursuant to EU Directive 2006/112/EC and art. 25 of Spanish VAT Law 37 /1992.")
 	viper.SetDefault(
 		"notes.retention_not_0",

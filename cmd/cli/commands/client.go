@@ -23,10 +23,11 @@ to quickly create a Cobra application.`,
 		filter, err := cmd.Flags().GetString("filter")
 		cobra.CheckErr(err)
 
-		cs := container.NewClientService()
+		cmd.Printf("ID: Name | VAT_ID\n")
 
+		cs := container.NewClientService()
 		for _, c := range cs.List(filterClient(filter)) {
-			cmd.Printf("Client: %s | %s \n", c.Name, c.VatID)
+			cmd.Printf("%s: %s | %s\n", c.ID, c.Name, c.VatID)
 		}
 	},
 }
