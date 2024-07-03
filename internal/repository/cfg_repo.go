@@ -13,8 +13,9 @@ func (c CfgRepo) GetDebug() bool {
 
 func (c CfgRepo) GetNotes() map[string]string {
 	return map[string]string{
-		"vat_0":           viper.GetString("notes.vat_0"),
+		"no_due":          viper.GetString("notes.no_due"),
 		"retention_not_0": viper.GetString("notes.retention_not_0"),
+		"vat_0":           viper.GetString("notes.vat_0"),
 	}
 }
 
