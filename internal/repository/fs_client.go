@@ -92,18 +92,18 @@ func (fc *FsClient) Read(clientID string) *model.Client {
 	return client
 }
 
-func (fc *FsClient) Update(clientID string, client *model.Client) *model.Client {
+func (fc *FsClient) Update(client *model.Client) *model.Client {
 	jsonBytes, err := json.MarshalIndent(client, "", "  ")
 	if err != nil {
-		fmt.Printf("Error while marshaling client %s. %v", clientID, err)
+		fmt.Printf("Error while marshaling client %s. %v", client.ID, err)
 		return nil
 	}
 
-	clientPath := filepath.Join(fc.basePath, clientID+".json")
+	clientPath := filepath.Join(fc.basePath, client.ID+".json")
 
 	err = os.WriteFile(clientPath, jsonBytes, rwMask)
 	if err != nil {
-		fmt.Printf("Error while updating client %s. %v", clientID, err)
+		fmt.Printf("Error while updating client %s. %v", client.ID, err)
 		return nil
 	}
 

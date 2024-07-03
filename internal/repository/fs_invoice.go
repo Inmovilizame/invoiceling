@@ -92,18 +92,18 @@ func (fi *FsInvoice) Read(invoiceID string) *model.Invoice {
 	return invoice
 }
 
-func (fi *FsInvoice) Update(invoiceID string, invoice *model.Invoice) *model.Invoice {
+func (fi *FsInvoice) Update(invoice *model.Invoice) *model.Invoice {
 	jsonBytes, err := json.MarshalIndent(invoice, "", "  ")
 	if err != nil {
-		fmt.Printf("Error while marshaling invoice %s. %v", invoiceID, err)
+		fmt.Printf("Error while marshaling invoice %s. %v", invoice.ID, err)
 		return nil
 	}
 
-	invoicePath := filepath.Join(fi.basePath, invoiceID+".json")
+	invoicePath := filepath.Join(fi.basePath, invoice.ID+".json")
 
 	err = os.WriteFile(invoicePath, jsonBytes, rwMask)
 	if err != nil {
-		fmt.Printf("Error while updating invoice %s. %v", invoiceID, err)
+		fmt.Printf("Error while updating invoice %s. %v", invoice.ID, err)
 		return nil
 	}
 
