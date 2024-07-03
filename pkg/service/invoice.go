@@ -12,26 +12,8 @@ import (
 )
 
 const (
-	HoursInDay = 24
+	hoursInDay = 24
 )
-
-type InvoiceRepo interface {
-	List(filter repository.Filter[*model.Invoice]) []*model.Invoice
-	Create(invoice *model.Invoice) error
-	Read(invoiceID string) *model.Invoice
-	Update(invoiceID string, invoice *model.Invoice) *model.Invoice
-	Delete(invoiceID string) error
-}
-
-type CfgRepo interface {
-	GetNotes() map[string]string
-	GetPdfOutputDir() string
-	GetCurrency() string
-	GetIDFormat() string
-	GetLogo() string
-	GetFreelancer() model.Freelancer
-	GetPaymentInfo() model.Payment
-}
 
 type InvoiceService struct {
 	iRepo   InvoiceRepo
@@ -60,22 +42,19 @@ func (is *InvoiceService) Create(
 	retention float64,
 ) (*model.Invoice, error) {
 	idString := is.getFormatedID(id)
-	notes := is.cfgRepo.GetNotes()
-	currency := is.cfgRepo.GetCurrency()
-	payment := is.cfgRepo.GetPaymentInfo()
-	dueHours := dueDays * HoursInDay
+	cfgNotes := is.cfgRepo.GetNotes()
 
-	due, err := time.ParseDuration(fmt.Sprintf("%dh", dueHours))
+	due, err := time.ParseDuration(fmt.Sprintf("%dh", dueDays*hoursInDay))
 	if err != nil {
 		return nil, err
 	}
 
-	invoice := model.NewInvoice(idString, due, currency, payment)
+	invoice := model.NewInvoice(idString, due, is.cfgRepo.GetCurrency(), note, cfgNotes["no_due"])
 	invoice.Logo = is.cfgRepo.GetLogo()
 	invoice.From = is.cfgRepo.GetFreelancer()
 	invoice.To = *is.cRepo.Read(clientID)
-	invoice.Notes = model.Notes{Default: note}
-	invoice.SetTaxes(vat, retention, notes)
+	invoice.Payment = is.cfgRepo.GetPaymentInfo()
+	invoice.SetTaxes(vat, retention, cfgNotes)
 
 	err = is.iRepo.Create(invoice)
 	if err != nil {
@@ -89,8 +68,16 @@ func (is *InvoiceService) Read(id string) *model.Invoice {
 	return is.iRepo.Read(id)
 }
 
-func (is *InvoiceService) Update(invoiceID string, invoice *model.Invoice) *model.Invoice {
-	return is.iRepo.Update(invoiceID, invoice)
+func (is *InvoiceService) AddItems(invoice *model.Invoice, items []model.Item) *model.Invoice {
+	for _, item := range items {
+		invoice.AddItem(item)
+	}
+
+	return is.iRepo.Update(invoice)
+}
+
+func (is *InvoiceService) Update(invoice *model.Invoice) *model.Invoice {
+	return is.iRepo.Update(invoice)
 }
 
 func (is *InvoiceService) Delete(invoiceID string) error {

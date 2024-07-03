@@ -6,11 +6,6 @@ import (
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 )
 
-type RendererInterface interface {
-	Render(invoice *model.Invoice, draft bool) error
-	SaveTo(filename string) error
-}
-
 type Document struct {
 	debug     bool
 	draft     bool
