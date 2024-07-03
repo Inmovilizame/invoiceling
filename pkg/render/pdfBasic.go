@@ -162,9 +162,11 @@ func (p *PdfBasic) header(logo, id string, date time.Time, due time.Duration) er
 		return err
 	}
 
-	err = p.headingInfoLine("Due", date.Add(due).Format(string(DFYMD)))
-	if err != nil {
-		return err
+	if due > 0 {
+		err = p.headingInfoLine("Due", date.Add(due).Format(string(DFYMD)))
+		if err != nil {
+			return err
+		}
 	}
 
 	if p.GetY() > p.lastYPos {
@@ -245,7 +247,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 		}
 	}
 
-	total := subtotal + tax.GetVat(subtotal) - tax.GetRetention(subtotal)
+	total := subtotal + tax.VatAmount(subtotal) - tax.RetentionAmount(subtotal)
 
 	p.Br(LineHeight)
 	startY := p.GetY()
@@ -337,7 +339,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 		"",
 		vatLabel,
 		strconv.FormatFloat(tax.Vat, 'f', 0, 64)+"%",
-		strconv.FormatFloat(tax.GetVat(subtotal), 'f', 2, 64)+currSymbol)
+		strconv.FormatFloat(tax.VatAmount(subtotal), 'f', 2, 64)+currSymbol)
 	if err != nil {
 		return err
 	}
@@ -347,7 +349,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 			"",
 			retentionLabel,
 			"-"+strconv.FormatFloat(tax.Retention, 'f', 0, 64)+"%",
-			strconv.FormatFloat(-tax.GetRetention(subtotal), 'f', 2, 64)+currSymbol)
+			strconv.FormatFloat(-tax.RetentionAmount(subtotal), 'f', 2, 64)+currSymbol)
 		if err != nil {
 			return err
 		}
@@ -380,7 +382,7 @@ func (p *PdfBasic) notes(notes model.Notes) error {
 
 	for _, line := range notesSlice {
 		err := p.MultiCell(
-			&gopdf.Rect{W: gopdf.PageSizeA4.W - 2*Margin, H: LineHeight},
+			&gopdf.Rect{W: gopdf.PageSizeA4.W - 2*Margin, H: 2 * LineHeight}, //nolint:gomnd //static value
 			mark+line,
 		)
 		if err != nil {
