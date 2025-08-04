@@ -115,7 +115,7 @@ func (t *translator) loadTranslations() {
 
 		// PDF Sections
 		"from": "De",
-		"to":   "Para",
+		"to":   "Cliente",
 
 		// Table Headers
 		"description": "Descripción",
