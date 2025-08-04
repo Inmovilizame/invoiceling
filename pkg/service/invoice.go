@@ -41,7 +41,7 @@ func (is *InvoiceService) Create(
 	vat,
 	retention float64,
 ) (*model.Invoice, error) {
-	idString := is.getFormatedID(id)
+	idString := is.getFormattedID(id)
 	cfgNotes := is.cfgRepo.GetNotes()
 
 	due, err := time.ParseDuration(fmt.Sprintf("%dh", dueDays*hoursInDay))
@@ -84,7 +84,7 @@ func (is *InvoiceService) Delete(invoiceID string) error {
 	return is.iRepo.Delete(invoiceID)
 }
 
-func (is *InvoiceService) getFormatedID(id int) string {
+func (is *InvoiceService) getFormattedID(id int) string {
 	// TODO: Make a better solution. Maybe a repo based GetLastID
 	if id == 0 {
 		id = 1

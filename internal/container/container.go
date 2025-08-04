@@ -2,6 +2,7 @@ package container
 
 import (
 	"github.com/Inmovilizame/invoiceling/internal/repository"
+	"github.com/Inmovilizame/invoiceling/pkg/i18n"
 	"github.com/Inmovilizame/invoiceling/pkg/render"
 	"github.com/Inmovilizame/invoiceling/pkg/service"
 	"github.com/spf13/viper"
@@ -31,7 +32,7 @@ func NewClientService() *service.Client {
 	return service.NewClientService(clientRepo)
 }
 
-func NewDocumentService(renderType string, draft bool) (*service.Document, error) {
+func NewDocumentService(renderType string, draft bool, language i18n.Language) (*service.Document, error) {
 	repo := repository.CfgRepo{}
 
 	doc, err := service.NewDocumentService(repo.GetDebug(), draft, repo.GetPdfOutputDir())
@@ -39,16 +40,19 @@ func NewDocumentService(renderType string, draft bool) (*service.Document, error
 		return nil, err
 	}
 
+	translator := i18n.NewTranslator()
+	translator.SetLanguage(language)
+
 	switch renderType {
 	case "Basic":
-		r, err := render.NewPdfBasicRender()
+		r, err := render.NewPdfBasicRender(translator)
 		if err != nil {
 			return nil, err
 		}
 
 		doc.SetRenderer(r)
 	default:
-		r, err := render.NewPdfBasicRender()
+		r, err := render.NewPdfBasicRender(translator)
 		if err != nil {
 			return nil, err
 		}

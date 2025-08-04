@@ -1,6 +1,6 @@
 module github.com/Inmovilizame/invoiceling
 
-go 1.22.2
+go 1.24
 
 require (
 	github.com/signintech/gopdf v0.25.1

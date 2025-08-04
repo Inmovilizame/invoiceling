@@ -15,14 +15,14 @@ var (
 	allowedFormats = []string{"yaml", "yml", "json"}
 	dirs           = []string{"client", "invoice", "pdf", "static"}
 
-	defaultMask = os.FileMode(0o755) //nolint:gomnd //static value
+	defaultMask = os.FileMode(0o755) //nolint:mnd //static value
 )
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialiaze a folder with default configurations",
-	Long: `Initialiaze the current folder with default configurations. This can be
+	Short: "Initialize a folder with default configurations",
+	Long: `Initialize the current folder with default configurations. This can be
 	changed manually by editing the generated config file.`,
 	Run: func(cmd *cobra.Command, _ []string) {
 		if viper.ConfigFileUsed() != "" {

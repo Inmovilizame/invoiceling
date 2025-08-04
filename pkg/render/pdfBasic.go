@@ -1,6 +1,7 @@
 package render
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Inmovilizame/invoiceling/assets"
+	"github.com/Inmovilizame/invoiceling/pkg/i18n"
 	"github.com/Inmovilizame/invoiceling/pkg/model"
 	"github.com/signintech/gopdf"
 )
@@ -62,12 +64,13 @@ const (
 )
 
 type PdfBasic struct {
-	debug    bool
-	lastYPos float64
+	debug      bool
+	lastYPos   float64
+	translator i18n.Translator
 	gopdf.GoPdf
 }
 
-func NewPdfBasicRender() (*PdfBasic, error) {
+func NewPdfBasicRender(translator i18n.Translator) (*PdfBasic, error) {
 	interFont, err := assets.FS.ReadFile("fonts/Inter.ttf")
 	if err != nil {
 		return nil, err
@@ -78,7 +81,9 @@ func NewPdfBasicRender() (*PdfBasic, error) {
 		return nil, err
 	}
 
-	pb := PdfBasic{}
+	pb := PdfBasic{
+		translator: translator,
+	}
 	pb.Start(gopdf.Config{
 		PageSize: *gopdf.PageSizeA4,
 	})
@@ -152,18 +157,18 @@ func (p *PdfBasic) header(logo, id string, date time.Time, due time.Duration) er
 		return err
 	}
 
-	err = p.headingInfoLine("Invoice", id)
+	err = p.headingInfoLine(p.translator.T("invoice"), id)
 	if err != nil {
 		return err
 	}
 
-	err = p.headingInfoLine("Date", date.Format(string(DFYMD)))
+	err = p.headingInfoLine(p.translator.T("date"), date.Format(string(DFYMD)))
 	if err != nil {
 		return err
 	}
 
 	if due > 0 {
-		err = p.headingInfoLine("Due", date.Add(due).Format(string(DFYMD)))
+		err = p.headingInfoLine(p.translator.T("due"), date.Add(due).Format(string(DFYMD)))
 		if err != nil {
 			return err
 		}
@@ -224,7 +229,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 
 	p.setSubtleNormalText()
 
-	err := p.itemTableRow("Description", "Quantity", "Rate", "Amount")
+	err := p.itemTableRow(p.translator.T("description"), p.translator.T("quantity"), p.translator.T("rate"), p.translator.T("amount"))
 	if err != nil {
 		return err
 	}
@@ -253,7 +258,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 	startY := p.GetY()
 	p.setSubtleNormalText()
 
-	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Payment Info", p.getCellOptions(gopdf.Left))
+	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, p.translator.T("payment_info"), p.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
@@ -269,34 +274,34 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 		ItemDescWidth,
 		p.GetY()+3*LineHeight,
 		"DF",
-		0., //nolint:gomnd //static value
+		0., //nolint:mnd //static value
 		0,
 	)
 	if err != nil {
 		return err
 	}
 
-	p.Br(5)            //nolint:gomnd //static value
-	p.SetX(Margin + 5) //nolint:gomnd //static value
+	p.Br(5)            //nolint:mnd //static value
+	p.SetX(Margin + 5) //nolint:mnd //static value
 	p.setNormalText()
 
-	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Holder: "+payment.Holder, p.getCellOptions(gopdf.Left))
+	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, p.translator.T("holder_label")+payment.Holder, p.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
 	p.Br(FromToLineHeight)
-	p.SetX(Margin + 5) //nolint:gomnd //static value
+	p.SetX(Margin + 5) //nolint:mnd //static value
 
-	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "IBAN: "+payment.Iban, p.getCellOptions(gopdf.Left))
+	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, p.translator.T("iban_label")+payment.Iban, p.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
 
 	p.Br(FromToLineHeight)
-	p.SetX(Margin + 5) //nolint:gomnd //static value
+	p.SetX(Margin + 5) //nolint:mnd //static value
 
-	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, "Swift: "+payment.Swift, p.getCellOptions(gopdf.Left))
+	err = p.CellWithOption(&gopdf.Rect{W: ItemQtyWidth}, p.translator.T("swift_label")+payment.Swift, p.getCellOptions(gopdf.Left))
 	if err != nil {
 		return err
 	}
@@ -311,11 +316,11 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 	p.SetStrokeColor(colorBlue())
 	p.Br(LineHeight)
 	p.Line(Margin+ItemDescWidth, p.GetY(), gopdf.PageSizeA4.W-Margin, p.GetY())
-	p.Br(LineHeight / 2) //nolint:gomnd //static value
+	p.Br(LineHeight / 2) //nolint:mnd //static value
 
 	err = p.itemTableRow(
 		"",
-		"Subtotal",
+		p.translator.T("subtotal"),
 		"",
 		strconv.FormatFloat(subtotal, 'f', 2, 64)+currSymbol)
 	if err != nil {
@@ -323,8 +328,8 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 	}
 
 	mark := "*"
-	vatLabel := "VAT"
-	retentionLabel := "IRPF"
+	vatLabel := p.translator.T("vat")
+	retentionLabel := p.translator.T("irpf")
 
 	if tax.Vat == 0 {
 		vatLabel += mark
@@ -359,7 +364,7 @@ func (p *PdfBasic) items(items []*model.Item, tax model.TaxInfo, currency string
 
 	err = p.itemTableRow(
 		"",
-		"Total",
+		p.translator.T("total"),
 		"",
 		strconv.FormatFloat(total, 'f', 2, 64)+currSymbol)
 	if err != nil {
@@ -382,7 +387,7 @@ func (p *PdfBasic) notes(notes model.Notes) error {
 
 	for _, line := range notesSlice {
 		err := p.MultiCell(
-			&gopdf.Rect{W: gopdf.PageSizeA4.W - 2*Margin, H: 2 * LineHeight}, //nolint:gomnd //static value
+			&gopdf.Rect{W: gopdf.PageSizeA4.W - 2*Margin, H: 2 * LineHeight}, //nolint:mnd //static value
 			mark+line,
 		)
 		if err != nil {
@@ -391,7 +396,7 @@ func (p *PdfBasic) notes(notes model.Notes) error {
 
 		mark += "*"
 
-		p.Br(5) //nolint:gomnd //static value
+		p.Br(5) //nolint:mnd //static value
 	}
 
 	return nil
@@ -408,7 +413,7 @@ func (p *PdfBasic) draftOverlay() error {
 			p.SetX(gopdf.PageSizeA4.W - DraftHorizontalShift)
 		}
 
-		err := p.CellWithOption(nil, DraftText, gopdf.CellOption{
+		err := p.CellWithOption(nil, p.translator.T("draft"), gopdf.CellOption{
 			Transparency: &gopdf.Transparency{Alpha: DraftAlpha, BlendModeType: gopdf.Overlay},
 		})
 		if err != nil {
@@ -450,14 +455,14 @@ func (p *PdfBasic) headingTitle() error {
 
 	err := p.CellWithOption(
 		&gopdf.Rect{W: HeaderInfoWidth},
-		"INVOICE",
+		p.translator.T("invoice_caps"),
 		p.getCellOptions(gopdf.Center),
 	)
 	if err != nil {
 		return err
 	}
 
-	p.Br(36) //nolint:gomnd //static value
+	p.Br(36) //nolint:mnd //static value
 
 	return nil
 }
@@ -498,11 +503,14 @@ func (p *PdfBasic) headingInfoLine(key, value string) error {
 }
 
 func (p *PdfBasic) from(from *model.Freelancer) error {
+	errs := make([]error, 0, 4) //nolint:mnd // reference value
+
 	p.setSubtleNormalText()
 
-	err := p.Cell(&gopdf.Rect{W: FromWidth}, "From")
+	err := p.Cell(&gopdf.Rect{W: FromWidth}, p.translator.T("from"))
 	if err != nil {
 		fmt.Printf("invoiceService.from: error %v", err)
+		errs = append(errs, err)
 	}
 
 	p.Br(LineHeight)
@@ -511,6 +519,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 	err = p.Cell(&gopdf.Rect{W: FromWidth}, from.Name)
 	if err != nil {
 		fmt.Printf("invoiceService.from: error %v", err)
+		errs = append(errs, err)
 	}
 
 	p.Br(FromToLineHeight)
@@ -519,6 +528,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		err = p.Cell(&gopdf.Rect{W: FromWidth}, from.Company)
 		if err != nil {
 			fmt.Printf("invoiceService.from: error %v", err)
+			errs = append(errs, err)
 		}
 
 		p.Br(FromToLineHeight)
@@ -528,6 +538,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		err = p.Cell(&gopdf.Rect{W: FromWidth}, from.VatID)
 		if err != nil {
 			fmt.Printf("invoiceService.from: error %v", err)
+			errs = append(errs, err)
 		}
 
 		p.Br(FromToLineHeight)
@@ -537,6 +548,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		err = p.Cell(&gopdf.Rect{W: FromWidth}, from.Address1)
 		if err != nil {
 			fmt.Printf("invoiceService.from: error %v", err)
+			errs = append(errs, err)
 		}
 
 		p.Br(FromToLineHeight)
@@ -546,6 +558,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		err = p.Cell(&gopdf.Rect{W: FromWidth}, from.Address2)
 		if err != nil {
 			fmt.Printf("invoiceService.from: error %v", err)
+			errs = append(errs, err)
 		}
 
 		p.Br(FromToLineHeight)
@@ -555,6 +568,7 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		err = p.Cell(&gopdf.Rect{W: FromWidth}, from.Phone)
 		if err != nil {
 			fmt.Printf("invoiceService.from: error %v", err)
+			errs = append(errs, err)
 		}
 
 		p.Br(FromToLineHeight)
@@ -567,14 +581,14 @@ func (p *PdfBasic) from(from *model.Freelancer) error {
 		p.lastYPos = endY
 	}
 
-	return err
+	return errors.Join(errs...)
 }
 
 func (p *PdfBasic) to(client *model.Client) error {
 	p.SetX(ToStart)
 	p.setSubtleNormalText()
 
-	err := p.Cell(&gopdf.Rect{W: ToWidth}, "To")
+	err := p.Cell(&gopdf.Rect{W: ToWidth}, p.translator.T("to"))
 	if err != nil {
 		fmt.Printf("invoiceService.to: error %v", err)
 	}
@@ -683,19 +697,19 @@ func (p *PdfBasic) setDraftText() {
 }
 
 func colorBlue() (red, green, blue uint8) {
-	return 0, 0, 200 //nolint:gomnd // static value for color schema
+	return 0, 0, 200 //nolint:mnd // static value for color schema
 }
 
 func colorGray() (red, green, blue uint8) {
-	return 192, 192, 192 //nolint:gomnd // static value for color schema
+	return 192, 192, 192 //nolint:mnd // static value for color schema
 }
 
 func colorBlack() (red, green, blue uint8) {
-	return 24, 24, 24 //nolint:gomnd // static value for color schema
+	return 24, 24, 24 //nolint:mnd // static value for color schema
 }
 
 func colorLavender() (red, green, blue uint8) {
-	return 128, 128, 192 //nolint:gomnd // static value for color schema
+	return 128, 128, 192 //nolint:mnd // static value for color schema
 }
 
 func getImageScaledDimension(imagePath string) (scaledWidth, scaledHeight float64) {

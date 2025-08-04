@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   APP: invoiceling
@@ -35,7 +35,7 @@ tasks:
       - tar -czvf ./bin/{{.APP}}.linux-amd64.tar.gz ./bin/{{.APP}}
 
   build-windows:
-    desc: "build linux binary"
+    desc: "build windows binary"
     cmds:
       - GOOS=windows GOARCH=amd64 go build -o ./bin/{{.APP}} ./cmd/cli/main.go
       - tar -czvf ./bin/{{.APP}}.windows-amd64.tar.gz ./bin/{{.APP}}

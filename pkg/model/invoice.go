@@ -20,7 +20,7 @@ func (i *Item) GetAmount() float64 {
 }
 
 func (i *Item) GetVat() float64 {
-	return i.GetAmount() * i.Vat / 100 //nolint:gomnd //static percentage calculation
+	return i.GetAmount() * i.Vat / 100 //nolint:mnd //static percentage calculation
 }
 
 type Notes struct {
@@ -57,11 +57,11 @@ type TaxInfo struct {
 }
 
 func (t TaxInfo) VatAmount(amount float64) float64 {
-	return amount * t.Vat / 100 //nolint:gomnd //calculating percentage
+	return amount * t.Vat / 100 //nolint:mnd //calculating percentage
 }
 
 func (t TaxInfo) RetentionAmount(amount float64) float64 {
-	return amount * t.Retention / 100 //nolint:gomnd //calculating percentage
+	return amount * t.Retention / 100 //nolint:mnd //calculating percentage
 }
 
 type Invoice struct {
